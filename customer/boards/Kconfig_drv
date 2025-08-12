@@ -1408,6 +1408,16 @@ menu "On-chip Peripheral RTOS Drivers"
         bool "Enable USB Host"
         select RT_USING_USB_HOST
         default n
+    
+    config BSP_USING_SWITCH_MPI2_SDIO
+        bool "Enable Switch SDIO MPI2"
+        depends on SOC_SF32LB52X
+        default n
+        if BSP_USING_SWITCH_MPI2_SDIO
+            config BSP_SWITCH_MPI2_SDIO_PIN
+                int "switch pin"
+                default -1
+        endif
         
     config BSP_USING_ONCHIP_RTC
         bool "Enable RTC"
