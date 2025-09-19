@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022, sakumisu
+ * Copyright (c) 2025, SiFli Technologies(Nanjing) Co., Ltd 
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -169,6 +170,9 @@ struct musb_hcd {
     volatile bool port_pec;
     volatile bool port_pe;
     struct musb_pipe pipe_pool[CONFIG_USB_MUSB_PIPE_NUM];
+#if defined(CONFIG_USB_MUSB_SIFLI) && (defined(SF32LB52X) || defined(SF32LB56X))
+    uint8_t sifli_ep_map[6]; // SiFli endpoint map: slots 0-2 for EP2-4, 3-5 for EP5-7
+#endif
 } g_musb_hcd[CONFIG_USBHOST_MAX_BUS];
 
 /* get current active ep */
@@ -361,10 +365,12 @@ int musb_bulk_urb_init(struct usbh_bus *bus, uint8_t chidx, struct usbh_urb *urb
     }
 
     if (urb->ep->bEndpointAddress & 0x80) {
+#ifndef CONFIG_USB_MUSB_SIFLI
         if ((8 << HWREGB(USB_BASE + MUSB_RXFIFOSZ_OFFSET)) < USB_GET_MAXPACKETSIZE(urb->ep->wMaxPacketSize)) {
             USB_LOG_ERR("Ep %02x fifo is overflow\r\n", urb->ep->bEndpointAddress);
             return -USB_ERR_RANGE;
         }
+#endif
 
 #ifdef CONFIG_USB_MUSB_WITHOUT_MULTIPOINT
         HWREGB(USB_BASE + MUSB_FADDR_OFFSET) = (urb->hport->dev_addr & 0x7F);
@@ -384,10 +390,12 @@ int musb_bulk_urb_init(struct usbh_bus *bus, uint8_t chidx, struct usbh_urb *urb
 
         HWREGH(USB_BASE + MUSB_RXIE_OFFSET) |= (1 << chidx);
     } else {
+#ifndef CONFIG_USB_MUSB_SIFLI
         if ((8 << HWREGB(USB_BASE + MUSB_TXFIFOSZ_OFFSET)) < USB_GET_MAXPACKETSIZE(urb->ep->wMaxPacketSize)) {
             USB_LOG_ERR("Ep %02x fifo is overflow\r\n", urb->ep->bEndpointAddress);
             return -USB_ERR_RANGE;
         }
+#endif
 
 #ifdef CONFIG_USB_MUSB_WITHOUT_MULTIPOINT
         HWREGB(USB_BASE + MUSB_FADDR_OFFSET) = (urb->hport->dev_addr & 0x7F);
@@ -434,10 +442,12 @@ int musb_intr_urb_init(struct usbh_bus *bus, uint8_t chidx, struct usbh_urb *urb
     }
 
     if (urb->ep->bEndpointAddress & 0x80) {
+#ifndef CONFIG_USB_MUSB_SIFLI
         if ((8 << HWREGB(USB_BASE + MUSB_RXFIFOSZ_OFFSET)) < USB_GET_MAXPACKETSIZE(urb->ep->wMaxPacketSize)) {
             USB_LOG_ERR("Ep %02x fifo is overflow\r\n", urb->ep->bEndpointAddress);
             return -USB_ERR_RANGE;
         }
+#endif
 
 #ifdef CONFIG_USB_MUSB_WITHOUT_MULTIPOINT
         HWREGB(USB_BASE + MUSB_FADDR_OFFSET) = (urb->hport->dev_addr & 0x7F);
@@ -457,10 +467,12 @@ int musb_intr_urb_init(struct usbh_bus *bus, uint8_t chidx, struct usbh_urb *urb
 
         HWREGH(USB_BASE + MUSB_RXIE_OFFSET) |= (1 << chidx);
     } else {
+#ifndef CONFIG_USB_MUSB_SIFLI
         if ((8 << HWREGB(USB_BASE + MUSB_TXFIFOSZ_OFFSET)) < USB_GET_MAXPACKETSIZE(urb->ep->wMaxPacketSize)) {
             USB_LOG_ERR("Ep %02x fifo is overflow\r\n", urb->ep->bEndpointAddress);
             return -USB_ERR_RANGE;
         }
+#endif
 
 #ifdef CONFIG_USB_MUSB_WITHOUT_MULTIPOINT
         HWREGB(USB_BASE + MUSB_FADDR_OFFSET) = (urb->hport->dev_addr & 0x7F);
@@ -540,8 +552,62 @@ static int musb_pipe_alloc(void)
 }
 #endif
 
+#if defined(CONFIG_USB_MUSB_SIFLI) && (defined(SF32LB52X) || defined(SF32LB56X))
+static int sifli_ep_map_take_slot(struct musb_hcd *hcd, uint8_t map_base, uint8_t ch_base, uint8_t ep_num)
+{
+    for (uint8_t i = 0; i < 3; i++) {
+        uint8_t *slot = &hcd->sifli_ep_map[map_base + i];
+
+        if (*slot == 0xFF) {
+            *slot = ep_num;
+            return ch_base + i;
+        }
+    }
+
+    return -USB_ERR_RANGE;
+}
+
+static int sifli_ep_map_alloc(struct usbh_bus *bus, uint8_t ep_num, bool is_in)
+{
+    if (ep_num <= 1) {
+        return ep_num;
+    }
+
+    if (ep_num < 2 || ep_num > 7) {
+        return -USB_ERR_RANGE;
+    }
+
+    struct musb_hcd *hcd = &g_musb_hcd[bus->hcd.hcd_id];
+    uint8_t map_base = is_in ? 0 : 3;
+    uint8_t ch_base = is_in ? 2 : 5;
+
+    return sifli_ep_map_take_slot(hcd, map_base, ch_base, ep_num);
+}
+
+static void sifli_ep_map_free(struct usbh_bus *bus, uint8_t chidx)
+{
+
+    if (chidx < 2 || chidx > 7) {
+        return;
+    }
+
+    struct musb_hcd *hcd = &g_musb_hcd[bus->hcd.hcd_id];
+    uint8_t idx = chidx - 2;
+
+    hcd->sifli_ep_map[idx] = 0xFF;
+}
+#endif
+
 static void musb_pipe_free(struct musb_pipe *pipe)
 {
+#if defined(CONFIG_USB_MUSB_SIFLI) && (defined(SF32LB52X) || defined(SF32LB56X))
+    // Clear SiFli endpoint mapping
+    if (pipe->urb && pipe->urb->ep && pipe->urb->hport && pipe->urb->hport->bus && 
+        (USB_GET_ENDPOINT_TYPE(pipe->urb->ep->bmAttributes) != USB_ENDPOINT_TYPE_CONTROL)) {
+        sifli_ep_map_free(pipe->urb->hport->bus, pipe->chidx);
+    }
+#endif
+
     if (pipe->urb) {
         pipe->urb->hcpriv = NULL;
         pipe->urb = NULL;
@@ -571,6 +637,12 @@ int usb_hc_init(struct usbh_bus *bus)
     usb_hc_low_level_init(bus);
 
     memset(&g_musb_hcd[bus->hcd.hcd_id], 0, sizeof(struct musb_hcd));
+
+#if defined(CONFIG_USB_MUSB_SIFLI) && (defined(SF32LB52X) || defined(SF32LB56X))
+    for (uint8_t i = 0; i < 6; i++) {
+        g_musb_hcd[bus->hcd.hcd_id].sifli_ep_map[i] = 0xFF;
+    }
+#endif
 
     for (uint8_t i = 0; i < CONFIG_USB_MUSB_PIPE_NUM; i++) {
         g_musb_hcd[bus->hcd.hcd_id].pipe_pool[i].waitsem = usb_osal_sem_create(0);
@@ -764,8 +836,23 @@ int usbh_submit_urb(struct usbh_urb *urb)
     if (USB_GET_ENDPOINT_TYPE(urb->ep->bmAttributes) == USB_ENDPOINT_TYPE_CONTROL) {
         chidx = 0;
     } else {
+#if defined(CONFIG_USB_MUSB_SIFLI) && (defined(SF32LB52X) || defined(SF32LB56X))
+        bool in = (urb->ep->bEndpointAddress & 0x80) ? true : false;
+        uint8_t ep_num = (urb->ep->bEndpointAddress & 0x0f);
+        // SiFli 52/56 parts are unidirectional in host: EP2-4 only IN, EP5-7 only OUT, EP0-1 bidirectional.
+        // Map OUT requests on EP2-4 to EP5-7, and IN requests on EP5-7 to EP2-4.
+        // IN on EP2-4 stays on EP2-4; OUT on EP5-7 stays on EP5-7.
+        // We keep a dynamic sifli_ep_map; if no slot remains, return -USB_ERR_RANGE.
+        
+        chidx = sifli_ep_map_alloc(bus, ep_num, in);
+        USB_LOG_DBG("sifli_ep_map_alloc: ep_num=%d, in=%d, chidx=%d\r\n", ep_num, in, chidx);
+        if (chidx < 0) {
+            return chidx; // Propagate error
+        }
+        
+#else
         chidx = (urb->ep->bEndpointAddress & 0x0f);
-
+#endif
         if (chidx > (CONFIG_USB_MUSB_PIPE_NUM - 1)) {
             return -USB_ERR_RANGE;
         }
