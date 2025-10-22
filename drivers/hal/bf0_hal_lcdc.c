@@ -3157,8 +3157,9 @@ __HAL_ROM_USED HAL_StatusTypeDef HAL_LCDC_SendLayerData2Reg(LCDC_HandleTypeDef *
     #define  p_DMACH0  DMA1_Channel7
     #define PTC_DMACH0_TC PTC_HCPU_DMAC1_DONE7
 #else
-    #define  p_DMACH0  DMA1_Channel5
-    #define PTC_DMACH0_TC PTC_HCPU_DMAC1_DONE5
+    static DMA_HandleTypeDef hdma_ptc_ch0 = {0};
+    static DMA_Channel_TypeDef *p_DMACH0 = NULL;
+    static uint8_t PTC_DMACH0_TC = 0xFF; 
 #endif /* SF32LB58X */
 
 #define  p_extDMA  hwp_extdma
@@ -3743,6 +3744,9 @@ static HAL_StatusTypeDef RAMLESS_HW_FSM_WRITE_DATAS_END(LCDC_HandleTypeDef *lcdc
     return err;
 }
 
+
+
+
 #ifdef LCDC_SUPPORT_DPI
 static void DPI_HW_FSM_START(LCDC_HandleTypeDef *lcdc)
 {
@@ -3755,6 +3759,35 @@ static void DPI_HW_FSM_START(LCDC_HandleTypeDef *lcdc)
 #else
     HAL_LCDC_ASSERT(0);//Fix me!
 #endif /* SF32LB56X */
+
+
+#ifdef SF32LB58X
+
+#else
+#ifdef DMA_SUPPORT_DYN_CHANNEL_ALLOC
+
+/*Dynamic allocation of DMA channels*/
+     memset(&hdma_ptc_ch0, 0, sizeof(hdma_ptc_ch0));
+
+    hdma_ptc_ch0.Instance = DMA1_Channel5;
+    HAL_DMA_Init(&hdma_ptc_ch0);
+    if(HAL_DMA_AllocChannel(&hdma_ptc_ch0) != HAL_OK)
+    {
+        HAL_LCDC_ASSERT(0); //DMA channel allocation failed
+    }
+    
+
+    p_DMACH0 = hdma_ptc_ch0.Instance;
+    uint32_t channel_num = (hdma_ptc_ch0.ChannelIndex >> 2) + 1;
+    PTC_DMACH0_TC = PTC_HCPU_DMAC1_DONE1 + (channel_num - 1);
+/*DMA channel init end*/
+
+#else
+    p_DMACH0 = DMA1_Channel5;
+    PTC_DMACH0_TC = PTC_HCPU_DMAC1_DONE5;
+#endif /*DMA_SUPPORT_DYN_CHANNEL_ALLOC*/
+
+#endif /* SF32LB58X */
 
     uint32_t psram_data;
     uint32_t vsh0_hsw_cfg1;//Only Hsync cfg
@@ -4123,6 +4156,32 @@ static void DPI_HW_FSM_STOP(LCDC_HandleTypeDef *lcdc)
     HAL_LCDC_ASSERT(HAL_OK == WAIT_EXECUTE_CODE_DONE(lcdc));
 
     NVIC_DisableIRQ(PTC_IRQ_NUM);
+
+    
+
+#ifdef SF32LB58X
+    
+#else
+#ifdef DMA_SUPPORT_DYN_CHANNEL_ALLOC
+    memset(&hdma_ptc_ch0, 0, sizeof(hdma_ptc_ch0));
+
+/* Clear the DMAC configuration channel*/
+    if (p_DMACH0) {
+
+
+        hdma_ptc_ch0.Instance = p_DMACH0;
+        HAL_DMA_DeInit(&hdma_ptc_ch0);
+        if(HAL_DMA_FreeChannel(&hdma_ptc_ch0) != HAL_OK)
+        {
+            HAL_LCDC_ASSERT(0); //DMA channel free failed
+        }
+
+        p_DMACH0 = NULL;
+        PTC_DMACH0_TC = 0xFF;
+    }
+#endif /*DMA_SUPPORT_DYN_CHANNEL_ALLOC*/
+
+#endif /* SF32LB58X */
 }
 
 static void DPI_HW_FSM_UPDATE_LAYER_DATA(LCDC_HandleTypeDef *lcdc)
