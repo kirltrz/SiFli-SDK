@@ -95,7 +95,7 @@ Return('group')
 
 ## 修改设置
 hello_world例程只有最简单的打印功能，很多组件都没有使能，即使在`main.c`里包含了组件的头文件，也无法调用相应函数，需要使用`menuconfig`工具修改
-工程配置，方法是在工程目录下执行`menuconfig --board=<board_name>`，这里的`<board_name`替换为所使用的板子名称，如`menuconfig --board=sf32lb52-lcd_n16r8`，与`scons`编译时指定板子的名称类似，缺省使用hcpu，也就是`menuconfig --board=sf32lb52-lcd_n16r8`与`menuconfig --board=sf32lb52-lcd_n16r8_hcpu`效果相同，都是以板子sf32lb52-lcd_n16r8的HCPU为对象配置当前工程。
+工程配置，方法是在工程目录下执行`sdk.py menuconfig --board=<board_name>`，这里的`<board_name>`替换为所使用的板子名称，如`sdk.py menuconfig --board=sf32lb52-lcd_n16r8`，与`scons`编译时指定板子的名称类似，缺省使用hcpu，也就是`sdk.py menuconfig --board=sf32lb52-lcd_n16r8`与`sdk.py menuconfig --board=sf32lb52-lcd_n16r8_hcpu`效果相同，都是以板子sf32lb52-lcd_n16r8的HCPU为对象配置当前工程。
 
 执行menuconfig后打开如图的界面，可以使用{kbd}`⇧`和{kbd}`⇩`方向键在不同菜单项间移动，按{kbd}`Enter`键进入子菜单，按{kbd}`Space`选中菜单项，确认修改都完成后，按{kbd}`D`保存最小配置到工程目录下的`proj.conf`文件中（即`project\proj.conf`），该文件为文本文件，可以打开查看修改前后的差异，menuconfig的详细用法参见[](/app_note/menuconfig.md)
 

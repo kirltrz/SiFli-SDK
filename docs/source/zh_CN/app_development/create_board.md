@@ -119,7 +119,7 @@
 ## 修改板子配置
 板子的配置包含以下几个：
 1. 硬件连接由`bsp_pinmux.c`、`board.conf`和`Kconfig.board`等文件定义，
-    - `board.conf`存放可由menuconfig配置的选项，比如console使用的串口，修改方法为在`board.conf`所在目录下执行`menuconfig`，并按{kbd}`D`以最小配置保存
+    - `board.conf`存放可由menuconfig配置的选项，比如console使用的串口，修改方法为在`board.conf`所在目录下执行`sdk.py menuconfig`，并按{kbd}`D`以最小配置保存
     - `Kconfig.board`存放menuconfig不可见的选项，比如下面的代码定义了触控中断使用的管脚、背光使用的PWM设备编号等
         ```kconfig
         config ASIC
