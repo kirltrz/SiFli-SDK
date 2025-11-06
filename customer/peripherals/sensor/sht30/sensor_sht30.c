@@ -14,6 +14,9 @@
     #define SHT30_MODEL_NAME "sht30"
 #endif
 
+#define RT_SENSOR_CTRL_GET_TEMP     (0x100)  /* get temperature */
+#define RT_SENSOR_CTRL_GET_HUMI     (0x101)  /* get humidity */
+
 static rt_size_t sht30_fetch_data(struct rt_sensor_device *sensor, void *buf,
                                   rt_size_t len)
 {
@@ -43,6 +46,51 @@ static rt_size_t sht30_fetch_data(struct rt_sensor_device *sensor, void *buf,
 
     return 1;
 }
+
+static rt_err_t sht30_control(struct rt_sensor_device *sensor, int cmd,
+                              void *args)
+{
+    struct rt_sensor_data *data = (struct rt_sensor_data *)args;
+    float temp = 0, humi = 0;
+
+    switch (cmd)
+    {
+    case RT_SENSOR_CTRL_GET_TEMP:
+
+        /* Start measurement and read result */
+        if (sht30_measure(&temp, &humi) != RT_EOK)
+        {
+            LOG_E("SHT30 measure failed");
+            return 0;
+        }
+
+        /* Return both temperature and humidity data */
+        data->type = RT_SENSOR_CLASS_TEMP;
+        data->data.temp = (rt_int32_t)(temp * 10); /* deci-degree */
+        data->timestamp = rt_sensor_get_ts();
+        break;
+    case RT_SENSOR_CTRL_GET_HUMI:
+
+        /* Start measurement and read result */
+        if (sht30_measure(&temp, &humi) != RT_EOK)
+        {
+            LOG_E("SHT30 measure failed");
+            return 0;
+        }
+
+        /* Return both temperature and humidity data */
+        data->type = RT_SENSOR_CLASS_HUMI;
+        data->data.humi = (rt_int32_t)(humi * 10); /* deci-percent */
+        data->timestamp = rt_sensor_get_ts();
+        break;
+
+    default:
+        break;
+    }
+    return RT_EOK;
+}
+
+static struct rt_sensor_ops sensor_ops = {sht30_fetch_data, sht30_control};
 
 int rt_hw_sht30_init(const char *name, struct rt_sensor_config *cfg)
 {
