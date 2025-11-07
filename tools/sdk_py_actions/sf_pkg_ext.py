@@ -201,6 +201,17 @@ def action_extensions(base_actions: Dict, project_path: str) -> Any:
             print(f"Error building package: {e}")
         except Exception as e:
             print(f"Error: {e}")
+            
+    def search_callback(target_name: str, ctx: Context, args: PropertyDict, name: str) -> None:
+
+        try:
+            search_pattern = name if '*' in name else f"{name}/*"
+            subprocess.run(["conan", "search", search_pattern, "-r=artifactory"], check=True)
+            print(f"Search completed for: {search_pattern}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error searching for package: {e}")
+        except Exception as e:
+            print(f"Error: {e}")
     
     def upload_callback(target_name: str, ctx: Context, args: PropertyDict, name: str, keep: bool = False) -> None:
         try:
@@ -338,7 +349,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Any:
                 'help': 'Login to SiFli package registry and store credentials.',
                 'options': [
                     {
-                        'names': ['--name', '-n'],
+                        'names': ['--user', '-u'],
                         'help': 'Username for login.',
                         'required': True,
                     },
@@ -374,7 +385,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Any:
                 'help': 'Create a new SiFli-SDK package.',
                 'options': [
                     {
-                        'names': ['--name'],
+                        'names': ['--name', '-n'],
                         'help': 'Package name.',
                         'default': 'mypackage',
                         'required': True,
@@ -386,7 +397,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Any:
                 'help': 'Build the package for upload.',
                 'options': [
                     {
-                        'names': ['--version'],
+                        'names': ['--version', '-v'],
                         'help': 'Version to be built.',
                         'required': True,
                     },
@@ -397,7 +408,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Any:
                 'help': 'Upload the specified package.',
                 'options': [
                     {
-                        'names': ['--name'],
+                        'names': ['--name', '-n'],
                         'help': 'Name of package to be uploaded.',
                         'required': True,
                     },
@@ -420,6 +431,17 @@ def action_extensions(base_actions: Dict, project_path: str) -> Any:
                     },
                 ],
             },
+            'sf-pkg-search':{
+                'callback': search_callback,
+                'help': 'Search for packages in SiFli package registry.',
+                'options': [
+                    {
+                        'names': ['--name', '-n'],
+                        'help': 'Name of package to search for.',
+                        'required': True,
+                    }
+                ],
+            }
         }
     }
 
