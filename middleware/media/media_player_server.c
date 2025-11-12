@@ -277,11 +277,14 @@ static void decode_audio_packet(ffmpeg_handle thiz, AVPacket *orig, AVPacket *cu
     int got_frame;
     do
     {
-        int ret;
+        int ret = -1;
         TRACE_MARK_START(TRACEID_AUDIO_DECODE_TOTAL);
         got_frame = 0;
         TRACE_MARK_START(TRACEID_AUDIO_DECODE);
-        ret = avcodec_decode_audio4(thiz->audio_dec_ctx, thiz->audio_frame, &got_frame, cur_pkt);
+        if (thiz->audio_dec_ctx)
+        {
+            ret = avcodec_decode_audio4(thiz->audio_dec_ctx, thiz->audio_frame, &got_frame, cur_pkt);
+        }
         TRACE_MARK_STOP(TRACEID_AUDIO_DECODE);
         if (ret < 0)
         {
@@ -312,28 +315,6 @@ static void decode_audio_packet(ffmpeg_handle thiz, AVPacket *orig, AVPacket *cu
                 thiz->audio_data_period = thiz->audio_data_size / (thiz->audio_samplerate * thiz->audio_frame->channels * (arg.write_bits_per_sample >> 3) / 1000);
                 LOG_I("audio_frame_size=%d, sr=%d", thiz->audio_data_size, thiz->audio_samplerate);
                 LOG_I("audio_data_period=%d", thiz->audio_data_period);
-#if !TWS_MIX_ENABLE
-                if (audio_device_is_a2dp_sink())
-                {
-                    arg.write_channnel_num = 2;
-                    arg.write_samplerate = 44100;
-                    if (arg.write_samplerate != thiz->audio_samplerate)
-                    {
-                        thiz->resample = sifli_resample_open(2, thiz->audio_samplerate, arg.write_samplerate);
-                        RT_ASSERT(thiz->resample);
-                    }
-                    if (thiz->audio_stereo)
-                    {
-                        thiz->cfg.mem_free(thiz->audio_stereo);
-                        thiz->audio_stereo = NULL;
-                    }
-                    if (thiz->audio_channel != 2)
-                    {
-                        thiz->audio_stereo = (uint16_t *)thiz->cfg.mem_malloc(thiz->audio_data_size * 2);
-                        RT_ASSERT(thiz->audio_stereo);
-                    }
-                }
-#endif
                 thiz->audio_handle = audio_open(AUDIO_TYPE_LOCAL_MUSIC, AUDIO_TX, &arg, audio_callback_func, thiz);
                 RT_ASSERT(thiz->audio_handle);
             }
@@ -456,7 +437,7 @@ static void audio_decode_thread(void *p)
 
         AVPacket orig_pkt = pkt;
 
-        if (thiz->is_paused || thiz->is_suspended)
+        if (thiz->is_paused || thiz->is_suspended || !thiz->audio_dec_ctx)
         {
             //@pause status, read thread will not send pkt to this thread
             av_packet_unref(&orig_pkt);
@@ -468,20 +449,23 @@ static void audio_decode_thread(void *p)
     }
 
     /* flush cached frames */
-    pkt.data = NULL;
-    pkt.size = 0;
-    do
+    if (thiz->audio_dec_ctx)
     {
-        TRACE_MARK_START(TRACEID_AUDIO_DECODE_TOTAL);
-        got_frame = 0;
-        avcodec_decode_audio4(thiz->audio_dec_ctx, thiz->audio_frame, &got_frame, &pkt);
+        pkt.data = NULL;
+        pkt.size = 0;
+        do
+        {
+            TRACE_MARK_START(TRACEID_AUDIO_DECODE_TOTAL);
+            got_frame = 0;
+            avcodec_decode_audio4(thiz->audio_dec_ctx, thiz->audio_frame, &got_frame, &pkt);
 
-        if (got_frame && refcount)
-            av_frame_unref(thiz->audio_frame);
+            if (got_frame && refcount)
+                av_frame_unref(thiz->audio_frame);
 
-        TRACE_MARK_STOP(TRACEID_AUDIO_DECODE_TOTAL);
+            TRACE_MARK_STOP(TRACEID_AUDIO_DECODE_TOTAL);
+        }
+        while (got_frame);
     }
-    while (got_frame);
     if (thiz->audio_handle)
     {
         audio_close(thiz->audio_handle);
@@ -546,7 +530,7 @@ static void video_audio_decode_thread(void *p)
             while (pkt.size > 0);
             av_packet_unref(&orig_pkt);
         }
-        else if (pkt.stream_index == thiz->audio_stream_idx && thiz && thiz->cfg.audio_enable)
+        else if (pkt.stream_index == thiz->audio_stream_idx && thiz && thiz->cfg.audio_enable && thiz->audio_dec_ctx)
         {
             decode_audio_packet(thiz, &orig_pkt, &pkt);
         }
@@ -1702,7 +1686,7 @@ static bool demux_sifli_ezip_media(ffmpeg_handle thiz)
           thiz->ezip_header.ch);
 
     // Start file read thread;
-    rt_uint32_t stack_size = 2048;
+    rt_uint32_t stack_size = 3072;
     rt_uint8_t  priority = av_read_pkt_task_prio;
 
     // Start decode thread;
@@ -1837,7 +1821,11 @@ int ffmpeg_open(ffmpeg_handle *return_hanlde, ffmpeg_config_t *cfg, uint32_t use
     rt_thread_startup(thiz->av_pkt_read_thread);
 
     rt_uint32_t evt = 0;
-    os_event_flags_wait(thiz->evt_init, EVT_INIT_OK | EVT_INIT_FAILED, OS_EVENT_FLAG_WAIT_ANY | OS_EVENT_FLAG_CLEAR, 20000, &evt);
+    uint32_t wait_init_timeout = 20000;
+#ifdef WIN32
+    wait_init_timeout = -1; //for step run
+#endif
+    os_event_flags_wait(thiz->evt_init, EVT_INIT_OK | EVT_INIT_FAILED, OS_EVENT_FLAG_WAIT_ANY | OS_EVENT_FLAG_CLEAR, wait_init_timeout, &evt);
 
     ret = RT_ERROR;
     if (evt & EVT_INIT_OK)
