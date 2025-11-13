@@ -1737,7 +1737,7 @@ int ffmpeg_open(ffmpeg_handle *return_hanlde, ffmpeg_config_t *cfg, uint32_t use
         os_delay(10);
         LOG_I("wait media exit");
     }
-    rt_enter_critical();
+    rt_base_t level = rt_hw_interrupt_disable();
     do
     {
         if (g_player)
@@ -1753,7 +1753,7 @@ int ffmpeg_open(ffmpeg_handle *return_hanlde, ffmpeg_config_t *cfg, uint32_t use
         }
     }
     while (0);
-    rt_exit_critical();
+    rt_hw_interrupt_enable(level);
 
     if (ret < 0)
     {
@@ -1920,9 +1920,9 @@ bool ffmpeg_is_video_available(ffmpeg_handle thiz)
     {
         has_audio = false;
     }
-    rt_enter_critical();
+    rt_base_t level = rt_hw_interrupt_disable();
     decoded = rt_slist_first(root);
-    rt_exit_critical();
+    rt_hw_interrupt_enable(level);
     if (decoded)
     {
         if (!has_audio)
@@ -1958,7 +1958,7 @@ int ffmpeg_next_video_frame(ffmpeg_handle thiz, uint8_t *data)
         empty_root = &thiz->ezip_video_cache.empty_video_slist;
         display_root = &thiz->ezip_video_cache.display_video_slist;
 
-        rt_enter_critical();
+        rt_base_t level = rt_hw_interrupt_disable();
         decoded = rt_slist_first(decoded_root);
         if (decoded)
         {
@@ -1973,7 +1973,7 @@ int ffmpeg_next_video_frame(ffmpeg_handle thiz, uint8_t *data)
             rt_slist_append(display_root, decoded);
         }
 
-        rt_exit_critical();
+        rt_hw_interrupt_enable(level);
 
         if (!decoded)
         {
