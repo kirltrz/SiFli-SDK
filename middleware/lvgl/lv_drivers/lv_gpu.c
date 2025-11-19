@@ -1320,12 +1320,11 @@ static lv_res_t my_decode_and_draw(lv_draw_ctx_t *draw_ctx, const lv_draw_img_ds
 
     if (cdsc == NULL || (!EPIC_SUPPORTED_CF(cdsc->dec_dsc.header.cf))) return LV_RES_INV;
 
-    /*
-        lv_img_cf_t cf;
-        if(lv_img_cf_is_chroma_keyed(cdsc->dec_dsc.header.cf)) cf = LV_IMG_CF_TRUE_COLOR_CHROMA_KEYED;
-        else if(lv_img_cf_has_alpha(cdsc->dec_dsc.header.cf)) cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
-        else cf = LV_IMG_CF_TRUE_COLOR;
-    */
+    lv_img_cf_t cf;
+    if (lv_img_cf_is_chroma_keyed(cdsc->dec_dsc.header.cf)) cf = LV_IMG_CF_TRUE_COLOR_CHROMA_KEYED;
+    else if (lv_img_cf_has_alpha(cdsc->dec_dsc.header.cf)) cf = LV_IMG_CF_TRUE_COLOR_ALPHA;
+    else cf = LV_IMG_CF_TRUE_COLOR;
+
     if (cdsc->dec_dsc.error_msg != NULL)
     {
         LV_LOG_WARN("Image draw error");
@@ -1363,7 +1362,58 @@ static lv_res_t my_decode_and_draw(lv_draw_ctx_t *draw_ctx, const lv_draw_img_ds
 
         draw_img(draw_ctx, draw_dsc, coords, &cdsc->dec_dsc);
     }
+    else
+    {
+        /* compressed image, fallback to software default decoder */
+        lv_area_t mask_com; /*Common area of mask and coords*/
+        bool union_ok;
+        union_ok = _lv_area_intersect(&mask_com, draw_ctx->clip_area, coords);
+        /*Out of mask. There is nothing to draw so the image is drawn successfully.*/
+        if (union_ok == false)
+        {
+            my_draw_cleanup(cdsc);
+            return LV_RES_OK;
+        }
 
+        int32_t width = lv_area_get_width(&mask_com);
+
+        uint8_t   *buf = lv_mem_buf_get(lv_area_get_width(&mask_com) *
+                                        LV_IMG_PX_SIZE_ALPHA_BYTE);  /*+1 because of the possible alpha byte*/
+
+        const lv_area_t *clip_area_ori = draw_ctx->clip_area;
+        lv_area_t line;
+        lv_area_copy(&line, &mask_com);
+        lv_area_set_height(&line, 1);
+        int32_t x = mask_com.x1 - coords->x1;
+        int32_t y = mask_com.y1 - coords->y1;
+        int32_t row;
+        lv_res_t read_res;
+        for (row = mask_com.y1; row <= mask_com.y2; row++)
+        {
+            lv_area_t mask_line;
+            union_ok = _lv_area_intersect(&mask_line, clip_area_ori, &line);
+            if (union_ok == false) continue;
+
+            read_res = lv_img_decoder_read_line(&cdsc->dec_dsc, x, y, width, buf);
+            if (read_res != LV_RES_OK)
+            {
+                lv_img_decoder_close(&cdsc->dec_dsc);
+                LV_LOG_WARN("Image draw can't read the line");
+                lv_mem_buf_release(buf);
+                my_draw_cleanup(cdsc);
+                draw_ctx->clip_area = clip_area_ori;
+                return LV_RES_INV;
+            }
+
+            draw_ctx->clip_area = &mask_line;
+            lv_draw_img_decoded(draw_ctx, draw_dsc, &line, buf, cf);
+            line.y1++;
+            line.y2++;
+            y++;
+        }
+        draw_ctx->clip_area = clip_area_ori;
+        lv_mem_buf_release(buf);
+    }
 
     my_draw_cleanup(cdsc);
     return LV_RES_OK;
