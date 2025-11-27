@@ -26,6 +26,8 @@
 #define CONFIG_USBHOST_SERIAL_RX_BUFSIZE (USBH_RX_MAX_SIZE * 2)
 #endif
 
+typedef rt_size_t rt_ssize_t; // Maintain backward compatibility
+
 enum usbh_serial_type {
     USBH_SERIAL_TYPE_CDC_ACM = 0,
     USBH_SERIAL_TYPE_FTDI,
