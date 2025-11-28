@@ -1,6 +1,6 @@
-# PM_GPIO功耗测试示例
+# GPIO功耗测试示例
 
-源码路径: example/pm_gpio
+源码路径: example/pm/gpio
 
 ### 支持的开发板
 此示例可在以下开发板上运行：

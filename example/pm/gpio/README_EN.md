@@ -1,6 +1,6 @@
-# PM_GPIO Power Consumption Test Example
+# GPIO Power Consumption Test Example
 
-Source code path: example/pm_gpio
+Source code path: example/pm/gpio
 
 ### Supported Development Boards
 This example can run on the following development boards:
