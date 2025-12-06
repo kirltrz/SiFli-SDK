@@ -2550,6 +2550,7 @@ void mic_gain_decrease(int8_t db)
 }
 
 #ifdef AUDIO_RX_USING_PDM
+extern void set_pdm_gain_to_register(int val);
 void pdm_gain_decrease(int db)
 {
     int new_gain = g_pdm_volume - db * 2;
@@ -2564,7 +2565,7 @@ void pdm_gain_decrease(int db)
     rt_kprintf("pmd gain to %ddb\r\n", new_gain / 2);
     set_pdm_gain_to_register(new_gain);
 }
-extern void set_pdm_gain_to_register(int val);
+
 int get_pdm_volume()
 {
     return g_pdm_volume;

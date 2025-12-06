@@ -308,7 +308,6 @@ typedef struct _audio_device_ctrl_t
     uint8_t                 tx_mix_dst_channel;
     uint8_t                 is_tx_need_mix;
     uint8_t                 is_busy;
-    uint8_t                 pdm_channels;
     uint8_t                 tx_count;
     uint8_t                 rx_count;
     uint8_t                 is_registerd;
@@ -892,7 +891,7 @@ static inline void process_speaker_rx(audio_server_t *server, audio_device_speak
     len = rt_device_read(my->i2s, 0, my->rx_data_tmp, readlen);
 #elif defined(AUDIO_RX_USING_PDM)
     //two PDM
-    if (my->pdm_channels != 1)
+    if (my->rx_channels != 1)
     {
         //has right channel, only left channel using single pdm channel
         readlen <<= 1;
@@ -1246,9 +1245,8 @@ static void config_rx(audio_device_speaker_t *my)
         caps.main_type = AUDIO_TYPE_INPUT;
         caps.sub_type = AUDIO_DSP_PARAM;
         caps.udata.config.samplefmt = PDM_CHANNEL_DEPTH_16BIT;
-        caps.udata.config.samplerate = PDM_SAMPLE_16KHZ;
-        caps.udata.config.channels = 1; /*1---pdm left only; 2---pdm stereo */
-        my->pdm_channels = caps.udata.config.channels;
+        caps.udata.config.samplerate = my->rx_samplerate;
+        caps.udata.config.channels = my->rx_channels; /* 1 -- left ony,   2 -- stereo */
         rt_device_control(my->pdm, AUDIO_CTL_CONFIGURE, &caps);
         int val_db = get_pdm_volume();
         LOG_I("pdm gain=%d * 0.5db channel=%d", val_db, caps.udata.config.channels);
@@ -1455,7 +1453,9 @@ static void micbias_power_on_internal()
         rt_device_control(my->audcodec_dev, AUDIO_CTL_START, &stream);
         stream = AUDIO_STREAM_RECORD | ((1 << HAL_AUDPRC_RX_CH0) << 8);
         rt_device_control(my->audprc_dev, AUDIO_CTL_START, &stream);
+#ifdef BSP_AUDPRC_RX0_DMA
         HAL_NVIC_DisableIRQ(AUDPRC_RX0_DMA_IRQ);
+#endif
     }
 }
 
@@ -1496,7 +1496,9 @@ AUDIO_API void micbias_power_on()
     pa.write_cache_size = 0;
     g_micbias = audio_open(AUDIO_TYPE_LOCAL_RECORD, AUDIO_RX, &pa, NULL, NULL);
     RT_ASSERT(g_micbias);
+#ifdef BSP_AUDPRC_RX0_DMA
     HAL_NVIC_DisableIRQ(AUDPRC_RX0_DMA_IRQ);
+#endif
 #else
 
     lock();
@@ -3421,14 +3423,15 @@ void audio_server_entry()
                 second = device_get_tx_in_running(speaker, 1);
                 client_mix_process(first, second, speaker);
 #else
+                /* some thirty lib use as_callback_cmd_cache_empty only */
                 audio_server_callback_cmt_t cmd = as_callback_cmd_cache_empty;
-                if (evt & AUDIO_SERVER_EVENT_TX_FULL_EMPTY)
+                if (evt & AUDIO_SERVER_EVENT_TX_HALF_EMPTY)
                 {
                     cmd = as_callback_cmd_cache_half_empty;
                 }
 
                 if (first && first->callback)
-                    first->callback(as_callback_cmd_cache_half_empty, first->user_data, 0);
+                    first->callback(cmd, first->user_data, 0);
 #endif
             }
             if ((evt & AUDIO_SERVER_EVENT_RX) && speaker->rx_count)
