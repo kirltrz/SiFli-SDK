@@ -50,8 +50,9 @@ void battery_calculator_init(battery_calculator_t *calc,
 **示例**：
 ```c
 battery_calculator_t battery_calc;
+//为了便于不同板子的适配和使用，电池曲线表及需要的变量实现在板子目录下的`battery_table.c`文件中
 battery_calculator_config_t calc_config = {
-    .charging_table = charging_curve_table,
+    .charging_table = charging_curve_table, 
     .charging_table_size = charging_curve_table_size,
     .discharging_table = discharge_curve_table,
     .discharging_table_size = discharge_curve_table_size,
@@ -117,7 +118,7 @@ void battery_monitor_task(void *parameter)
         .charging_table = charging_curve_table,
         .charging_table_size = charging_curve_table_size,
         .discharging_table = discharge_curve_table,
-        .discharging_table_size = sizeof(discharge_curve_table)/sizeof(battery_lookup_point_t),
+        .discharging_table_size = discharge_curve_table_size,
         .charge_filter_threshold = 50,      // 充电时50mV阈值
         .discharge_filter_threshold = 30,   // 放电时30mV阈值
         .filter_count = 3,                  // 需要3次确认
@@ -170,10 +171,20 @@ void battery_monitor_task(void *parameter)
 
 ## 电池曲线表配置
 
-**重要说明**：这里提供的默认电池曲线表仅作为参考示例，不一定适配当前使用的实际电池。为确保电量计算的准确性，**强烈建议从电池厂家获取匹配的电池电压-电量曲线数据**，并根据实际曲线配置相应的查找表。
+**重要说明**：板子目录下提供的默认电池曲线表仅作为参考示例，不一定适配当前使用的实际电池。为确保电量计算的准确性，**强烈建议从电池厂家获取匹配的电池电压-电量曲线数据**，并根据实际曲线配置相应的查找表。
 
-电池曲线表定义在 `battery_table.c` 中，格式如下：
+电池曲线表接口说明如下：
+1. **充电曲线表**
+   - 变量名：`charging_curve_table`
+   - 类型：`const battery_lookup_point_t[]`
+   - 说明：定义电池充电状态下的电压-电量对应关系，电压值应按从高到低排列
 
+2. **放电曲线表**
+   - 变量名：`discharge_curve_table`
+   - 类型：`const battery_lookup_point_t[]`
+   - 说明：定义电池放电状态下的电压-电量对应关系，电压值应按从高到低排列
+
+电池曲线表定义在各板子目录下的`battery_table.c` 中，格式如下：
 ```c
 const battery_lookup_point_t chargeing_curve_table[] = {
     { 100,  41808},  // 4.18V -> 100%

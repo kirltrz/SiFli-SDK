@@ -50,6 +50,7 @@ void battery_calculator_init(battery_calculator_t *calc,
 **Example**:
 ```c
 battery_calculator_t battery_calc;
+//To facilitate the adaptation and use of different boards, the battery curve table and the required variable implementations are placed in the `battery_table.c` file under the board directory.
 battery_calculator_config_t calc_config = {
     .charging_table = charging_curve_table,
     .charging_table_size = charging_curve_table_size,
@@ -170,7 +171,18 @@ void battery_monitor_task(void *parameter)
 
 ## Battery Curve Table Configuration
 
-**Important Note**: The default battery curve table provided here is for reference only and may not match the actual battery being used. To ensure accurate battery level calculation, **it is strongly recommended to obtain matching battery voltage-capacity curve data from the battery manufacturer** and configure the lookup table according to the actual curve.
+**Important Note**: The default battery curve table provided in the board directory is only a reference example and may not be suitable for the actual battery currently in use. To ensure the accuracy of battery level calculation, **it is strongly recommended to obtain matching battery voltage-capacity curve data from the battery manufacturer**and configure the corresponding lookup table according to the actual curve.
+
+Battery curve table interface description:
+1. **Charging curve table**
+   - Variable name: `charging_curve_table`
+   - Type: `const battery_lookup_point_t[]`
+   - Description: Defines the voltage-percentage relationship during battery charging state, with voltage values arranged in descending order
+
+2. **Discharging curve table**
+   - Variable name: `discharge_curve_table`
+   - Type: `const battery_lookup_point_t[]`
+   - Description: Defines the voltage-percentage relationship during battery discharging state, with voltage values arranged in descending order
 
 Battery curve tables are defined in `battery_table.c` in the following format:
 

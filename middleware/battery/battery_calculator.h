@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "battery_table.h"
-
+#include "drv_io.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
