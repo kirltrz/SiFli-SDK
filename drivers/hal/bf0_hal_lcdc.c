@@ -3460,7 +3460,7 @@ static void SPI_AUX_HW_FSM_START(LCDC_HandleTypeDef *lcdc)
 
 
     //Start!!!
-    memcpy((void *) & (hwp_ptc1->TCR1), (void *)PTC_PHASE_ADDR(0), PTC_TABLE_BYTE);
+    word_memcpy((void *) & (hwp_ptc1->TCR1), (void *)PTC_PHASE_ADDR(0), PTC_TABLE_BYTE / 4);
     NVIC_EnableIRQ(PTC_IRQ_NUM);
     hwp_ptc1->TCR1 |= PTC_TCR1_SWTRIG;
 
@@ -4141,7 +4141,8 @@ static void DPI_HW_FSM_START(LCDC_HandleTypeDef *lcdc)
 
 
     //Start!!!
-    memcpy((void *) & (hwp_ptc1->TCR1), (void *)PTC_PHASE_ADDR(0), PTC_TABLE_BYTE);
+    word_memcpy((void *) & (hwp_ptc1->TCR1), (void *)PTC_PHASE_ADDR(0), PTC_TABLE_BYTE / 4);
+
     hwp_ptc1->TCR1 |= PTC_TCR1_SWTRIG;
 
 }
@@ -4588,8 +4589,8 @@ static void SPI_AUX_HW_FSM_START(LCDC_HandleTypeDef *lcdc)
     PTC_CODE(PTC_DMACH0_TC,  &(p_DMACH0->CNDTR),          PTC_OP_WRITE, PTC_TABLE_WORD);    //jump to phase 0,
     PTC_PHASE_ENDS(15);
 
-
-    memcpy((void *) & (hwp_ptc1->TCR1), (void *)PTC_PHASE_ADDR(0), PTC_TABLE_BYTE);
+    //Start!!!
+    word_memcpy((void *) & (hwp_ptc1->TCR1), (void *)PTC_PHASE_ADDR(0), PTC_TABLE_BYTE / 4);
     NVIC_EnableIRQ(PTC_IRQ_NUM);
 
     hwp_btim2->ARR = porch_interval;
