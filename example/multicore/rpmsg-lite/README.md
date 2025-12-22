@@ -58,7 +58,7 @@ LCPU控制台将显示：
 rx: Hello LCPU, this is HCPU
 ```
 
-> 为演示睡眠功能，HCPU执行send命令后会进入睡眠状态，LCPU也会随之睡眠，两者均会被定时器或消息唤醒。
+> 为演示睡眠功能，HCPU执行send命令后会进入睡眠状态，LCPU也会随之睡眠，两者均只会被定时器或消息唤醒，无法通过 send 命令唤醒。
 
 ## 参考文档
 - [SiFli-SDK 快速入门](https://docs.sifli.com/projects/sdk/latest/sf32lb52x/quickstart/index.html)
