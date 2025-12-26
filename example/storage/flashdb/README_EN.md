@@ -4,8 +4,10 @@ Source path: example/storage/flashdb
 
 ## Supported Platforms
 <!-- Which boards and chip platforms are supported -->
-+ sf32lb52-lcd_n16r8
-+ eh-lb523
++ sf32lb52-nano
++ sf32lb52-lcd
++ sf32lb56-lcd
++ sf32lb58-lcd
 
 ## Overview
 <!-- Example introduction -->
