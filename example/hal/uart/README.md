@@ -65,7 +65,7 @@ please input the serial port num:5
 |--------|------------|---------------|-------------------|
 |52_nano  | UART2     | PAD_PA28（11）    | PAD_PA25（12）  |
 |525    | UART2     | PAD_PA27（8）    | PAD_PA20（10）    |   
-|587  | UART2     | PAD_PA28 (CONN2 5)  |PAD_PA29 (CONN2 3)  |
+|58  | UART2     | PAD_PA28 (CONN2 5)  |PAD_PA29 (CONN2 3)  |
 |56  | UART2     | PAD_PA37 (38)   |PAD_PA36 (40)  |
 
 
