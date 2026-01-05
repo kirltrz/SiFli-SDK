@@ -1821,6 +1821,11 @@ __ROM_USED void rt_hexdump(const char *tag, rt_size_t width, rt_uint8_t *buf, rt
 {
 #define __is_print(ch)       ((unsigned int)((ch) - ' ') < 127u - ' ')
 
+    if (log_paused)
+    {
+        return;
+    }
+
     rt_size_t i, j;
     rt_size_t log_len = 0, name_len = rt_strlen(tag);
     char *log_buf = NULL, dump_string[8];
