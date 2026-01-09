@@ -3664,6 +3664,7 @@ static audio_client_t audio_client_init(audio_type_t audio_type, audio_rwflag_t 
         if (resampled_ring_size > 32000)
         {
             resampled_ring_size = 32000;
+            if (hfp_with_xiaozhi) resampled_ring_size = 4000;
         }
         tx_ring_size = resampled_ring_size;
         LOG_I("audio resamped cache size=%d", tx_ring_size);
