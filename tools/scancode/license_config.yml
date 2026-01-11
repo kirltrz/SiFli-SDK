@@ -25,6 +25,7 @@ exclude:
     - Kconfig
     - rtconfig.h
     - config.h
+    - rtconfig.py
   langs:
     - HTML
 extensions:
