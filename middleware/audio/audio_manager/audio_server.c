@@ -52,11 +52,13 @@
 #ifdef BSP_ENABLE_I2S_CODEC
     #include "drv_i2s_audio.h"
 #endif
-
+#if defined(AUDIO_RX_USING_I2S) || defined(AUDIO_TX_USING_I2S)
+    #if !BSP_ENABLE_I2S_CODEC
+        #error "should enable BSP_ENABLE_I2S_CODEC"
+    #endif
+#endif
 
 /* ---------------------audio server config start-------------------------- */
-
-#define START_RX_IN_TX_INTERUPT     1
 #define PDM_DEVICE_NAME             "pdm1"
 #undef audio_mem_malloc
 #undef audio_mem_free
@@ -269,9 +271,7 @@ struct audio_client_base_t
 typedef struct
 {
     struct _audio_device_ctrl_t *parent;
-#if START_RX_IN_TX_INTERUPT
     rt_event_t                  event;
-#endif
     rt_device_t                 audprc_dev;
     rt_device_t                 audcodec_dev;
     rt_device_t                 pdm;
@@ -777,7 +777,7 @@ static inline void process_speaker_tx(audio_server_t *server, audio_device_speak
 #else
     p_rb = &first->ring_buf;
 #endif
-#if START_RX_IN_TX_INTERUPT
+
     if (my->tx_ready == 1)
     {
         my->tx_ready++;
@@ -788,7 +788,6 @@ static inline void process_speaker_tx(audio_server_t *server, audio_device_speak
             rt_event_send(my->event, 1);
         }
     }
-#endif
 
     if (my->tx_enable == 0)
     {
@@ -1350,41 +1349,8 @@ static void start_rx(audio_device_speaker_t *my)
 static void start_txrx(audio_device_speaker_t *my)
 {
     int stream;
-#if defined(AUDIO_RX_USING_PDM)
-    //7 DAC start
-#if START_RX_IN_TX_INTERUPT
     my->is_wait_rx_start = 1;
-#endif
-    stream = AUDIO_STREAM_REPLAY | ((1 << HAL_AUDPRC_TX_CH0) << 8);
-    rt_device_control(my->audprc_dev, AUDIO_CTL_START, (void *)&stream);
-    stream = AUDIO_STREAM_REPLAY | ((1 << HAL_AUDCODEC_DAC_CH0) << 8);
-    rt_device_control(my->audcodec_dev, AUDIO_CTL_START, &stream);
-    my->opened_map_flag |= OPEN_MAP_TX;
-    my->tx_ready = 1;
-#if START_RX_IN_TX_INTERUPT
-    //wait rx start
-    rt_err_t got = rt_event_recv(my->event, 1, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1000, NULL) ;
-    LOG_I("got rx start %d", got);
-#else
-    if (my->need_pdm_rx)
-    {
-        my->need_pdm_rx = 0;
-        stream = AUDIO_STREAM_PDM_START;
-        rt_device_control(my->pdm, AUDIO_CTL_START, &stream);
-    }
-#endif
-#elif defined(AUDIO_RX_USING_I2S)
-    if (my->need_i2s_rx)
-    {
-        my->need_i2s_rx = 0;
-        stream = AUDIO_STREAM_RECORD;
-        rt_device_control(my->i2s, AUDIO_CTL_START, &stream);
-        my->opened_map_flag |= OPEN_MAP_TX;
-        my->tx_ready = 1;
-    }
-#else
-#if START_RX_IN_TX_INTERUPT
-    my->is_wait_rx_start = 1;
+
 #if defined(AUDIO_TX_USING_I2S)
     stream = AUDIO_STREAM_REPLAY;
     rt_device_control(my->i2s, AUDIO_CTL_START, &stream);
@@ -1406,26 +1372,6 @@ static void start_txrx(audio_device_speaker_t *my)
     rt_err_t got = rt_event_recv(my->event, 1, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1000, NULL) ;
     LOG_I("got rx start %d", got);
     rt_thread_mdelay(10);
-#else
-    LOG_I("start txrx");
-    int stream_audprc, stream_audcodec;
-    rt_base_t level = rt_hw_interrupt_disable();
-    stream_audcodec = AUDIO_STREAM_REPLAY | ((1 << HAL_AUDCODEC_DAC_CH0) << 8);
-    stream_audprc   = AUDIO_STREAM_REPLAY | ((1 << HAL_AUDPRC_TX_CH0) << 8);
-    if (my->need_adc_rx)
-    {
-        my->need_adc_rx = 0;
-        stream_audcodec = AUDIO_STREAM_RXandTX | ((1 << HAL_AUDCODEC_ADC_CH0) << 8) | ((1 << HAL_AUDCODEC_DAC_CH0) << 8);
-        stream_audprc   = AUDIO_STREAM_RXandTX | ((1 << HAL_AUDPRC_RX_CH0) << 8) | ((1 << HAL_AUDPRC_TX_CH0) << 8);
-    }
-    rt_device_control(my->audcodec_dev, AUDIO_CTL_START, &stream_audcodec);
-    rt_device_control(my->audprc_dev, AUDIO_CTL_START, &stream_audprc);
-    rt_hw_interrupt_enable(level);
-    rt_thread_mdelay(10);
-    my->opened_map_flag |= OPEN_MAP_TX;
-    my->tx_ready = 1;
-#endif //START_RX_IN_TX_INTERUPT
-#endif //AUDIO_RX_USING_PDM
 }
 
 static rt_err_t micbias_rx_ind(rt_device_t dev, rt_size_t size)
@@ -1527,9 +1473,11 @@ AUDIO_API void micbias_power_on()
     pa.read_samplerate = 16000;
     pa.read_cache_size = 0;
     pa.write_cache_size = 0;
-    pa.is_micbias_only = 1;
     g_micbias = audio_open(AUDIO_TYPE_LOCAL_RECORD, AUDIO_RX, &pa, NULL, NULL);
     RT_ASSERT(g_micbias);
+#ifdef BSP_AUDPRC_RX0_DMA
+    HAL_NVIC_DisableIRQ(AUDPRC_RX0_DMA_IRQ);
+#endif
 #else
 
     lock();
@@ -1912,10 +1860,9 @@ static int audio_device_speaker_close(void *user_data)
             my->audprc_dev = NULL;
         }
 
-#if START_RX_IN_TX_INTERUPT
         rt_event_delete(my->event);
         my->event = NULL;
-#endif
+
 #if DEBUG_FRAME_SYNC
         LOG_I("tx=%d rx=%d", my->debug_tx_index, my->debug_rx_index);
         for (int i = 0; i < FRAME_DEBUG_MAX; i++)
@@ -2916,7 +2863,6 @@ inline static int audio_process_cmd(audio_server_t *server)
     audio_type_t   audio_type;
     audio_device_e device_type;
 
-    lock();
     do
     {
         audio_server_cmd_e     cmd_e;
@@ -2988,7 +2934,6 @@ inline static int audio_process_cmd(audio_server_t *server)
     {
         ret = 1;
     }
-    unlock();
     return ret;
 }
 
@@ -3443,11 +3388,13 @@ void audio_server_entry()
 
             if (evt & AUDIO_SERVER_EVENT_CMD)
             {
+                lock();
                 while (1)
                 {
                     if (audio_process_cmd(server) == 0)
                         break;
                 }
+                unlock();
             }
             if (!has_device_busy(server))
             {

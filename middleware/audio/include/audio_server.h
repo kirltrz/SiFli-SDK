@@ -109,8 +109,6 @@ typedef struct
     uint32_t read_cache_size;
     uint8_t  read_channnel_num;
     uint8_t  read_bits_per_sample;
-
-    uint8_t  is_micbias_only;
 } audio_parameter_t;
 
 
