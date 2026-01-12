@@ -24,7 +24,7 @@ exclude:
     - ChangeLog
     - Kconfig
     - rtconfig.h
-    - config.h
+    - "*ffmpeg/config.h"
     - rtconfig.py
     - proj.conf
   langs:

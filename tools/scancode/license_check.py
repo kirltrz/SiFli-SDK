@@ -7,6 +7,7 @@ import argparse
 import sys
 import json
 import yaml
+import fnmatch
 
 def analyze_file(config_file, scancode_file, scanned_files_dir):
 
@@ -64,14 +65,7 @@ def analyze_file(config_file, scancode_file, scanned_files_dir):
             file_type = file.get("file_type")
             kconfig = "Kconfig" in orig_path and file_type in ['ASCII text']
             check = False
-
-            if file.get("extension")[1:] in never_check_ext:
-                check = False
-            elif file.get("programming_language") in never_check_langs:
-                check = False
-            elif file.get("name") in never_check_file:
-                check = False
-            elif kconfig:
+            if kconfig:
                 check = True
             elif file.get("programming_language") in check_langs:
                 check = True
@@ -79,6 +73,15 @@ def analyze_file(config_file, scancode_file, scanned_files_dir):
                 check = True
             elif file.get("is_source"):
                 check = True
+
+            if check:
+                path_to_check = orig_path.replace('\\', '/')
+                if file.get("extension")[1:] in never_check_ext or \
+                    file.get("programming_language") in never_check_langs or \
+                    file.get("name") in never_check_file or \
+                    any(fnmatch.fnmatch(path_to_check, pattern) for pattern in never_check_file):
+                    check = False
+
 
             if check:
                 matched_ext_paths = [p for p in extension_paths if p in orig_path]
@@ -92,7 +95,7 @@ def analyze_file(config_file, scancode_file, scanned_files_dir):
                         report += ("* {} has invalid license: {}\n".format(orig_path, detected_expr))
                     continue
                 if not licenses and report_missing_license:
-                    report += ("* {} missing license.".format(orig_path))
+                    report += ("* {} missing license.\n".format(orig_path))
                 else:
                     allowed_licenses = more_lic if isinstance(more_lic, list) else [more_lic]
                     if not any(allowed and allowed in detected_expr for allowed in allowed_licenses) and report_invalid_license:

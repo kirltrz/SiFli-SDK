@@ -56,17 +56,21 @@ echo [INFO] Identifying and copying changed files from last commit...
 for /f "usebackq delims=" %%F in (`
     git diff --name-only --diff-filter=AM HEAD~1 HEAD
 `) do (
-    echo   - Copying "%%F"
-    for %%A in ("%%F") do set "file=%%~fA"
-    for %%A in ("%%F") do set "ABS=%%~dpA"
-    set "REL=!ABS:%ROOT%\=!"
-    if not exist "%SCAN_SOURCE_DIR%\!REL!" (
-        mkdir "%SCAN_SOURCE_DIR%\!REL!"
-    )
-    copy "!file!" "%SCAN_SOURCE_DIR%\!REL!" >nul
-    if errorlevel 1 (
-        echo [ERROR] Failed to copy "!file!". Aborting.
-        exit /b 1
+    if exist "%%F\" (
+        echo   - Skipping submodule "%%F"
+    ) else (
+        echo   - Copying "%%F"
+        for %%A in ("%%F") do set "file=%%~fA"
+        for %%A in ("%%F") do set "ABS=%%~dpA"
+        set "REL=!ABS:%ROOT%\=!"
+        if not exist "%SCAN_SOURCE_DIR%\!REL!" (
+            mkdir "%SCAN_SOURCE_DIR%\!REL!"
+        )
+        copy "!file!" "%SCAN_SOURCE_DIR%\!REL!" >nul
+        if errorlevel 1 (
+            echo [ERROR] Failed to copy "!file!". Aborting.
+            exit /b 1
+        )
     )
 )
 echo [INFO] File copy complete.
