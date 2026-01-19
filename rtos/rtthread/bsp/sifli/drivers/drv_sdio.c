@@ -7,7 +7,9 @@
 #include "board.h"
 #include "drv_sdio.h"
 #include "drv_config.h"
-
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    #include "drv_switch_mpi2_sdio.h"
+#endif
 /** @addtogroup bsp_driver Driver IO
   * @{
   */
@@ -691,7 +693,9 @@ static void rthw_sdio_request(struct rt_mmcsd_host *host, struct rt_mmcsd_req *r
     struct sdio_pkg pkg;
     struct rthw_sdio *sdio = host->private_data;
     struct rt_mmcsd_data *data;
-
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_sdio_lock();
+#endif
     RTHW_SDIO_LOCK(sdio);
 
     if (req->cmd != RT_NULL)
@@ -738,6 +742,9 @@ static void rthw_sdio_request(struct rt_mmcsd_host *host, struct rt_mmcsd_req *r
     RTHW_SDIO_UNLOCK(sdio);
 
     mmcsd_req_complete(sdio->host);
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_sdio_unlock();
+#endif
 }
 
 static int rthw_sdio_set_clk(struct rt_mmcsd_host *host, uint32_t clk)
@@ -795,7 +802,9 @@ static void rthw_sdio_iocfg(struct rt_mmcsd_host *host, struct rt_mmcsd_io_cfg *
     rt_uint32_t clk = io_cfg->clock;
     struct rthw_sdio *sdio = (struct rthw_sdio *)host->private_data;
     SD_TypeDef *hw_sdio = sdio->sdio_des.hw_sdio;
-
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_sdio_lock();
+#endif
     LOG_D("clk:%d width:%s%s%s power:%s%s%s",
           clk,
           io_cfg->bus_width == MMCSD_BUS_WIDTH_8 ? "8" : "",
@@ -832,6 +841,9 @@ static void rthw_sdio_iocfg(struct rt_mmcsd_host *host, struct rt_mmcsd_io_cfg *
     }
 
     RTHW_SDIO_UNLOCK(sdio);
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_sdio_unlock();
+#endif
 }
 
 /**

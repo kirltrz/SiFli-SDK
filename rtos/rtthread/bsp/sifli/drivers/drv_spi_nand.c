@@ -23,6 +23,9 @@
 #include "drv_io.h"
 #include "flash_table.h"
 
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    #include "drv_switch_mpi2_sdio.h"
+#endif
 #ifdef RT_USING_ULOG
     //#define DRV_DEBUG
     #define LOG_TAG                "drv.spi_nand"
@@ -250,6 +253,9 @@ int rt_nand_read_page(uint32_t addr, uint8_t *data, int size, uint8_t *spare, in
     }
     if (addr >= hflash->base)
         addr -= hflash->base;
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_lock();
+#endif
 #ifdef BSP_USING_BBM
     int blk, page, offset;
 
@@ -293,6 +299,9 @@ int rt_nand_read_page(uint32_t addr, uint8_t *data, int size, uint8_t *spare, in
     }
     if (i == 128)   // read all cc ? status error?
         RT_ASSERT(0);
+#endif
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_unlock();
 #endif
     return res;
 }
@@ -344,6 +353,9 @@ int rt_nand_write_page(uint32_t addr, const uint8_t *buf, int size, const uint8_
             }
         }
     }
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_lock();
+#endif
 #ifdef BSP_NAND_CHECK_BEFORE_WRITE
     SCB_InvalidateDCache_by_Addr((void *)hflash->base, nand_pagesize + SPI_NAND_MAXOOB_SIZE);
     SCB_InvalidateDCache_by_Addr((void *)hflash->data_buf, nand_pagesize + SPI_NAND_MAXOOB_SIZE);
@@ -391,13 +403,21 @@ int rt_nand_write_page(uint32_t addr, const uint8_t *buf, int size, const uint8_
     rt_nand_unlock();
 #else
     if (hflash == NULL || size > nand_pagesize)  // only support read 1 page
+    {
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+        rt_switch_mpi2_unlock();
+#endif
         return 0;
+    }
 
     rt_nand_lock();
     res = HAL_NAND_WRITE_WITHOOB(hflash, addr, buf, size, spare, spare_len);
     rt_nand_unlock();
     if (res <= 0)
         LOG_E("NAND Write2 fail, error code 0x%x\n", hflash->ErrorCode);
+#endif
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_unlock();
 #endif
     return res;
 }
@@ -417,6 +437,9 @@ int rt_nand_erase_block(uint32_t addr)
 
     if (addr >= hflash->base)
         addr -= hflash->base;
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_lock();
+#endif
 #ifdef BSP_USING_BBM
     int blk;
 
@@ -426,7 +449,12 @@ int rt_nand_erase_block(uint32_t addr)
     rt_nand_unlock();
 #else
     if (!IS_ALIGNED(nand_blksize, addr))  // address should be block aligned
+    {
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+        rt_switch_mpi2_unlock();
+#endif
         return -2;
+    }
 
 #ifndef BSP_FORCE_ERASE_NAND
     SCB_InvalidateDCache_by_Addr((void *)hflash->base, nand_pagesize + SPI_NAND_MAXOOB_SIZE);
@@ -437,6 +465,9 @@ int rt_nand_erase_block(uint32_t addr)
     if (bad)   // block is bad, do not erase, or bad mark will be cover
     {
         LOG_E("Blk with address 0x%x is bad, do not erase2\n", addr);
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+        rt_switch_mpi2_unlock();
+#endif
         return -3;
     }
 #endif
@@ -447,6 +478,9 @@ int rt_nand_erase_block(uint32_t addr)
 
     if (res != 0)
         LOG_E("Erase error code 0x%x at pos 0x%x\n", hflash->ErrorCode, addr);
+#endif
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_unlock();
 #endif
     return res;
 }
