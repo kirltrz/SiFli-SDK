@@ -1,5 +1,7 @@
-# USB复合设备示例项目
+# USB 复合设备示例
+
 源码路径：example\cherryusb\device\cdc_hid_msc
+
 ## 支持的开发板
 - SF32LB52_LCD_N16R8
 

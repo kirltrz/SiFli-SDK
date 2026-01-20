@@ -1,4 +1,4 @@
-# usb_audio_class_example
+# USB 大容量存储设备示例（RAM DISK）
 
 源码路径：example\cherryusb\device\ram_disk
 

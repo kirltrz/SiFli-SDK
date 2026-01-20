@@ -1,4 +1,4 @@
-# cdc_acm_uart
+# USB 转串口桥接示例（CDC ACM UART）
 
 一个基于CherryUSB的USB CDC ACM到UART桥接驱动程序，可以将USB虚拟串口数据透明地转发到物理UART设备。
 

@@ -1,4 +1,4 @@
-# USB Composite Device Example Project
+# USB Composite Device Example
 
 Source code path: example\cherryusb\device\cdc_hid_msc
 
