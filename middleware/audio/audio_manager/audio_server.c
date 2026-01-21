@@ -122,6 +122,12 @@ typedef struct
     uint8_t  data[AUDIO_DATA_LEN];
 } audio_data_t;
 
+typedef struct
+{
+    void (*func)(void *);
+    void *user_data;
+} audio_10ms_callback_t;
+
 #define AUDIO_DATA_HEADER_LEN   ((uint32_t)(((audio_data_t *) 0)->data))
 
 static audio_data_t *p_audio_dump;
@@ -184,7 +190,6 @@ enum
 #define  AUDIO_SERVER_EVENT_TX_FULL_EMPTY   (1 << 13)
 #define  AUDIO_SERVER_EVENT_TX_I2S1         (1 << 14)
 #define  AUDIO_SERVER_EVENT_TX_I2S2         (1 << 15)
-#define  AUDIO_SERVER_EVENT_TX_BLE_SINK     (1 << 16)
 
 #define AUDIO_SERVER_EVENT_ALL  ( \
                                 AUDIO_SERVER_EVENT_CMD| \
@@ -199,7 +204,6 @@ enum
                                 AUDIO_SERVER_EVENT_A2DP_RESUME| \
                                 AUDIO_SERVER_EVENT_TX_I2S1 | \
                                 AUDIO_SERVER_EVENT_TX_I2S2 | \
-                                AUDIO_SERVER_EVENT_TX_BLE_SINK | \
                                 0 \
                                 )
 
@@ -402,24 +406,24 @@ static uint8_t g_ae_log = 0;
 
 /* dump debug control*/
 
-audio_dump_ctrl_t audio_dump_debug[ADUMP_NUM];
-
+static audio_dump_ctrl_t audio_dump_debug[ADUMP_NUM];
+static audio_10ms_callback_t tx_callbacks[1];
 static bool a2dp_sink_need_trigger = 1;
 
-static void (*ble_tx_dma_callback)();
-static device_open_parameter_t g_ble_bap_sink_parameter;
 static bool ble_bap_src_enabled = 0;
-struct rt_ringbuffer *ble_bap_src_enabled_ring;
+
 static uint32_t ble_sink_low_water_level_times;
 static uint32_t ble_sink_high_water_level_times;
 static int ble_sink_pll_speed_up;
 static rt_tick_t ble_sink_change_ticks;
 
-void audio_server_seup_ble_bap_src(struct rt_ringbuffer *rb, void (*ble_src_callback)())
+void audio_server_seup_ble_bap_src(bool is_enable)
 {
-    ble_bap_src_enabled_ring = rb;
-    ble_bap_src_enabled = 1;
-    ble_tx_dma_callback = ble_src_callback;
+    ble_bap_src_enabled = is_enable;
+}
+bool audio_server_is_ble_src_enable(void)
+{
+    return ble_bap_src_enabled;
 }
 
 /*
@@ -525,9 +529,6 @@ static inline audio_server_t *get_server()
 }
 uint8_t get_server_current_device(void)
 {
-    if (ble_bap_src_enabled)
-        return AUDIO_DEVICE_BLE_BAP_SINK;
-
     return current_audio_device;
 }
 uint8_t get_server_current_play_status(void)
@@ -876,6 +877,11 @@ static inline void process_speaker_tx(audio_server_t *server, audio_device_speak
         }
 #endif
     }
+#if BT_BAP_BROADCAST_SOURCE
+    if (first->callback)
+        first->callback(as_callback_cmd_10ms_dma, first->user_data, 0);
+#endif
+
 }
 
 #if DEBUG_FRAME_SYNC
@@ -1951,16 +1957,6 @@ static int a2dp_device_input_callback(audio_server_callback_cmt_t cmd, const uin
     return 0;
 }
 
-static int ble_bap_sink_device_input_callback(audio_server_callback_cmt_t cmd, const uint8_t *buffer, uint32_t size)
-{
-    //LOG_I("ble sink cmd=%d", cmd);
-    if (cmd == as_callback_cmd_cache_empty || cmd == as_callback_cmd_cache_half_empty)
-    {
-        rt_event_send(&get_server()->event, AUDIO_SERVER_EVENT_TX_BLE_SINK);
-    }
-    return 0;
-}
-
 static int hfp_device_input_callback(audio_server_callback_cmt_t cmd, const uint8_t *buffer, uint32_t size)
 {
     if (cmd == as_callback_cmd_cache_empty || cmd == as_callback_cmd_cache_half_empty)
@@ -2020,14 +2016,6 @@ static int hardware_device_open(audio_device_ctrl_t *device, audio_client_t clie
     {
     case AUDIO_DEVICE_SPEAKER:
         ret = device->device.open(device->device.user_data, NULL);
-        audio_device_ctrl_t *sink = &g_server.devices_ctrl[AUDIO_DEVICE_BLE_BAP_SINK];
-        if (sink->is_registerd && !device->tx_count && ble_bap_src_enabled)
-        {
-            LOG_I("speaker to ble");
-            g_ble_bap_sink_parameter.tx_sample_rate = client->parameter.write_samplerate;
-            g_ble_bap_sink_parameter.tx_channels = client->parameter.write_channnel_num;
-            sink->device.open(&g_ble_bap_sink_parameter, NULL);
-        }
         break;
     case AUDIO_DEVICE_A2DP_SINK:
         if (device->tx_count)
@@ -2057,17 +2045,6 @@ static int hardware_device_open(audio_device_ctrl_t *device, audio_client_t clie
         break;
     case AUDIO_DEVICE_I2S2:
         device->device.open(device->device.user_data, i2s2_device_input_callback);
-        break;
-    case AUDIO_DEVICE_BLE_BAP_SINK:
-        if (device->tx_count)
-        {
-            LOG_I("ble share open");
-            break;
-        }
-        g_ble_bap_sink_parameter.device_rb = &client->ring_buf;
-        g_ble_bap_sink_parameter.tx_sample_rate = client->parameter.write_samplerate;
-        g_ble_bap_sink_parameter.tx_channels = client->parameter.write_channnel_num;
-        ret = device->device.open(&g_ble_bap_sink_parameter, ble_bap_sink_device_input_callback);
         break;
     default:
         RT_ASSERT(0);
@@ -2937,10 +2914,6 @@ inline static int audio_process_cmd(audio_server_t *server)
     return ret;
 }
 
-extern void notify_dma_done_to_a2dp();
-RT_WEAK void notify_dma_done_to_a2dp()
-{
-}
 static rt_err_t speaker_tx_done(rt_device_t dev, void *buffer)
 {
     //in inturrupt
@@ -2950,14 +2923,14 @@ static rt_err_t speaker_tx_done(rt_device_t dev, void *buffer)
     }
     audio_server_t *server = get_server();
     //rt_kprintf("-tx done\n");
-    process_speaker_tx(server, &server->device_speaker_private);
-#if BT_BAP_BROADCAST_SOURCE
-    if (ble_tx_dma_callback)
+    for (int i = 0; i < sizeof(tx_callbacks) / sizeof(tx_callbacks[0]); i++)
     {
-        ble_tx_dma_callback();
+        if (tx_callbacks[i].func)
+        {
+            tx_callbacks[i].func(tx_callbacks[i].user_data);
+        }
     }
-    notify_dma_done_to_a2dp();
-#endif
+    process_speaker_tx(server, &server->device_speaker_private);
     return RT_EOK;
 }
 
@@ -3375,7 +3348,6 @@ void audio_server_entry()
     speaker = &server->devices_ctrl[AUDIO_DEVICE_SPEAKER];
     a2dp_sink = &server->devices_ctrl[AUDIO_DEVICE_A2DP_SINK];
     hfp = &server->devices_ctrl[AUDIO_DEVICE_HFP];
-    ble_bap_sink = &server->devices_ctrl[AUDIO_DEVICE_BLE_BAP_SINK];
 
     while (1)
     {
@@ -3457,17 +3429,6 @@ void audio_server_entry()
                 }
                 avrcp_process(first, NULL, evt);
 #endif
-            }
-
-            if ((evt & AUDIO_SERVER_EVENT_TX_BLE_SINK)
-                    && ble_bap_sink->device.output
-                    && ble_bap_sink->is_busy)
-            {
-                first = device_get_tx_in_running(ble_bap_sink, 0);
-                if (first && first->callback)
-                {
-                    first->callback(as_callback_cmd_cache_half_empty, first->user_data, 0);
-                }
             }
 
             if ((evt & AUDIO_SERVER_EVENT_BT_DOWNLINK) && hfp->tx_count && hfp->is_busy)
@@ -4018,6 +3979,24 @@ AUDIO_API void audio_server_register_listener(audio_server_listener_func func, u
     lock();
     g_server.local_music_listener = func;
     unlock();
+}
+
+AUDIO_API void audio_register_10ms_tx_dma_callback(void (*callback)(void *), void *p)
+{
+    rt_base_t level;
+    level = rt_hw_interrupt_disable();
+    tx_callbacks[0].func = callback;
+    tx_callbacks[0].user_data = p;
+    rt_hw_interrupt_enable(level);
+}
+
+AUDIO_API void audio_unregister_10ms_tx_dma_callback(void (*callback)(void *))
+{
+    rt_base_t level;
+    level = rt_hw_interrupt_disable();
+    tx_callbacks[0].func = NULL;
+    tx_callbacks[0].user_data = NULL;
+    rt_hw_interrupt_enable(level);
 }
 
 AUDIO_API void bt_rx_event_to_audio_server()

@@ -18,6 +18,8 @@ extern "C" {
 #define AUDIO_DBG_LVL           LOG_LVL_INFO
 
 #define AUDIO_MAX_VOLUME        (15)
+#define SPEAKER_10MS_DMA_SIZE    960
+#define BAP_BROADCAST_SINK_CACHE_SIZE        (SPEAKER_10MS_DMA_SIZE * 4)  // 10ms * 4
 
 /*
     !!!!! notice!!!!
@@ -40,13 +42,6 @@ typedef struct
     uint8_t tsco;
     uint16_t sample_rate;
 } audio_param_bt_voice_t;
-
-typedef struct
-{
-    struct rt_ringbuffer *device_rb;
-    uint16_t tx_sample_rate;
-    uint16_t tx_channels;
-} device_open_parameter_t;
 
 typedef enum
 {
@@ -85,6 +80,7 @@ typedef enum
     as_callback_cmd_play_to_prev     = 10, //a2dp device to AG
     as_callback_cmd_play_resume      = 11, //a2dp device to AG, only notify app to chagen UI, app do not resume again
     as_callback_cmd_play_pause       = 12, //a2dp device to AG, only notify app to chage UI, app do not pause again
+    as_callback_cmd_10ms_dma         = 13,
     as_callback_cmd_user             = 100,
 } audio_server_callback_cmt_t;
 
@@ -124,7 +120,7 @@ typedef enum
     AUDIO_DEVICE_I2S2          = 4,
     AUDIO_DEVICE_PDM1          = 5,
     AUDIO_DEVICE_PDM2          = 6,
-    AUDIO_DEVICE_BLE_BAP_SINK  = 7, //local is ble audio src, output to ble bap sink device
+    AUDIO_DEVICE_BLE_BAP_SINK  = 7,
     AUDIO_DEVICE_XIAOZHI       = 8,
     AUDIO_DEVICE_NUMBER
 } audio_device_e;
@@ -330,10 +326,12 @@ void audio_3a_set_bypass(uint8_t is_bypass, uint8_t mic, uint8_t down);
 void micbias_power_off();
 void micbias_power_on();
 
-#define BAP_BROADCAST_SINK_CACHE_SIZE        (960 * 4)  // 10ms * 4
-void audio_server_seup_ble_bap_src(struct rt_ringbuffer *rb, void (*ble_src_callback)());
+void audio_server_seup_ble_bap_src(bool is_enable);
 void audio_set_tws_volume(uint8_t volume);
 void audio_set_tws_volume_type(uint8_t is_relative);
+void audio_register_10ms_tx_dma_callback(void (*callback)(void *), void *p);
+void audio_unregister_10ms_tx_dma_callback(void (*callback)(void *));
+bool audio_server_is_ble_src_enable(void);
 
 #ifdef __cplusplus
 }

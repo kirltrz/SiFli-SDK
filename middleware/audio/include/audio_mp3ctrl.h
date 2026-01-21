@@ -1,6 +1,11 @@
+/*
+ * SPDX-FileCopyrightText: 2019-2026 SiFli Technologies(Nanjing) Co., Ltd
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #ifndef AUDIO_MP3CTRL_H
 #define AUDIO_MP3CTRL_H     1
-
 
 #include <audio_server.h>
 
