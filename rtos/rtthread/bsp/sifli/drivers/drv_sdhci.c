@@ -346,6 +346,12 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct rt_mmcsd_data *da
         {
             LOG_D("sdhci_prepare_data SDMA");
             //sdhci_writel(host, (uint32_t)data->buf,   SDHCI_DMA_ADDRESS);
+
+#if !defined(SF32LB55X)
+
+            data->buf = (void *)HCPU_MPI_SBUS_ADDR(data->buf);
+
+#endif /* !SF32LB55X */
             hal_sdhci_set_dma_addr(&host->handle, (uint32_t)data->buf);
         }
     }
