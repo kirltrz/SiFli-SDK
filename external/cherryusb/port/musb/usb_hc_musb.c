@@ -1106,9 +1106,11 @@ void USBH_IRQHandler(uint8_t busid)
 
     bus = &g_usbhost_bus[busid];
 
+#if 0
     if (!(HWREGB(USB_BASE + MUSB_DEVCTL_OFFSET) & USB_DEVCTL_HOST)) {
         return;
     }
+#endif
 
     is = HWREGB(USB_BASE + MUSB_IS_OFFSET);
     txis = HWREGH(USB_BASE + MUSB_TXIS_OFFSET);
