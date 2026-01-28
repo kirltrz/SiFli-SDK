@@ -15,6 +15,7 @@
 #endif
 #ifdef BSP_USING_SDHCI
     #include "drv_sdhci.h"
+    int rt_hw_sdmmc_num_init(uint8_t sdhci_num);
 #elif BSP_USING_SD_LINE
     #include "drv_sdio.h"
 #endif
@@ -37,6 +38,7 @@ typedef struct
 uint8_t ble_gap_update_channel_map(ble_gap_update_channel_map_t *map);
 #endif
 void BSP_GPIO_Set(int pin, int val, int is_porta);
+static void rt_wifi_set_flag(void *arg, uint32_t flag);
 #if !SKW_BOOT_MODE_RAM
     /*
     * 文件模式下，用于分段读取 Wi‑Fi 固件：
@@ -51,6 +53,7 @@ void BSP_GPIO_Set(int pin, int val, int is_porta);
     /* 按 4KB 为主的块大小，和 RAM 模式的分段逻辑一致 */
     static char           wifi_fw_buf[4 * 1024];
 #endif
+
 /**
  * @brief Local WiFi control callback context.
  *
@@ -71,6 +74,77 @@ uint8_t mmcsd_get_stat(void);
  */
 void mmcsd_set_stat(uint8_t stat);
 
+#ifdef BSP_USING_SD_LINE
+__weak int rt_hw_sdio_deinit(void)
+{
+    return 0;
+}
+#endif
+void rt_wifi_sdio_init(void)
+{
+    switch (WIFI_SDIO_NUM)
+    {
+    case WIFI_SDIO_SDHCI1:
+#ifdef BSP_USING_SDHCI1
+        rt_hw_sdmmc_num_init(0);
+#endif
+        break;
+    case WIFI_SDIO_SDHCI2:
+#ifdef BSP_USING_SDHCI2
+        rt_hw_sdmmc_num_init(1);
+#endif
+        break;
+    case WIFI_SDIO_LINE:
+#ifdef BSP_USING_SD_LINE
+        rt_hw_sdio_init();
+#endif
+        break;
+    default:
+        break;
+    }
+}
+void rt_wifi_sdio_deinit(void)
+{
+    switch (WIFI_SDIO_NUM)
+    {
+    case WIFI_SDIO_SDHCI1:
+#ifdef BSP_USING_SDHCI1
+        rt_hw_sdmmc_deinit(0);
+#endif
+        break;
+    case WIFI_SDIO_SDHCI2:
+#ifdef BSP_USING_SDHCI2
+        rt_hw_sdmmc_deinit(1);
+#endif
+        break;
+    case WIFI_SDIO_LINE:
+#ifdef BSP_USING_SD_LINE
+        rt_hw_sdmmc_deinit();
+#endif
+        break;
+    default:
+        break;
+    }
+}
+__weak void BSP_WIFI_PowerUp()
+{
+}
+__weak void BSP_WIFI_PowerDown()
+{
+}
+void rt_wifi_power(uint8_t power)
+{
+    rt_wifi_set_flag(NULL, power ? WIFI_DEVICE_INITING : WIFI_DEVICE_IDLE);
+    if (power)
+    {
+        BSP_WIFI_PowerUp();
+    }
+    else
+    {
+        BSP_WIFI_PowerDown();
+    }
+    rt_thread_mdelay(200);
+}
 /**
  * @brief Poll SDIO/MMC subsystem until ready.
  *
@@ -81,8 +155,8 @@ void mmcsd_set_stat(uint8_t stat);
  */
 int rt_check_sdio_ready(void)
 {
-    uint8_t timeout = 50; /* max 5s wait for mmcsd */
-    while (timeout --)
+    int timeout = 50; /* max 5s wait for mmcsd */
+    while (timeout--)
     {
         if (mmcsd_get_stat())
         {
@@ -90,13 +164,37 @@ int rt_check_sdio_ready(void)
         }
         rt_thread_mdelay(100);
     }
-    if (!timeout)
+    if (timeout <= 0)
     {
         rt_kprintf("mmcsd init fail\n");
+        rt_wifi_power(0);
+        rt_wifi_sdio_deinit();
         return -1;
     }
     return 0;
 }
+
+static void rt_wifi_set_flag(void *arg, uint32_t flag)
+{
+    rt_device_t device = rt_device_find(SKW_DEV_NAME);
+    if (device)
+    {
+        struct wifi_ctl *ctl = (struct wifi_ctl *)device->user_data;
+        ctl->flag_t = flag;
+    }
+}
+
+uint32_t rt_wifi_get_flag(void)
+{
+    rt_device_t device = rt_device_find(SKW_DEV_NAME);
+    if (device)
+    {
+        struct wifi_ctl *ctl = (struct wifi_ctl *)device->user_data;
+        return ctl->flag_t;
+    }
+    return 0;
+}
+
 /**
  * @brief Suspend WiFi (enter low-power).
  *
@@ -107,11 +205,8 @@ int rt_check_sdio_ready(void)
  */
 int rt_wifi_suspend(void)
 {
-    int pin_f = WIFI_POWER_PIN < GPIO1_PIN_NUM ? 1 : 0;
-    BSP_GPIO_Set(pin_f ? WIFI_POWER_PIN : (WIFI_POWER_PIN - GPIO1_PIN_NUM), 0, pin_f);
-    pin_f = WIFI_WAKEUP_OUT_PIN < GPIO1_PIN_NUM ? 1 : 0;
-    BSP_GPIO_Set(pin_f ? WIFI_WAKEUP_OUT_PIN : (WIFI_WAKEUP_OUT_PIN - GPIO1_PIN_NUM), 0, pin_f);
-    rt_hw_sdmmc_deinit(0);
+    rt_wifi_power(0);
+    rt_wifi_sdio_deinit();
     return 0;
 }
 /**
@@ -124,14 +219,10 @@ int rt_wifi_suspend(void)
  */
 int rt_wifi_resume(void)
 {
-    int pin_f = WIFI_POWER_PIN < GPIO1_PIN_NUM ? 1 : 0;
-    BSP_GPIO_Set(pin_f ? WIFI_POWER_PIN : (WIFI_POWER_PIN - GPIO1_PIN_NUM), 1, pin_f);
-
-    pin_f = WIFI_WAKEUP_OUT_PIN < GPIO1_PIN_NUM ? 1 : 0;
-    BSP_GPIO_Set(pin_f ? WIFI_WAKEUP_OUT_PIN : (WIFI_WAKEUP_OUT_PIN - GPIO1_PIN_NUM), 1, pin_f);
-
+    rt_kprintf("%s %d\n", __func__, __LINE__);
+    rt_wifi_power(1);
     mmcsd_set_stat(0);
-    rt_hw_sdmmc_init();
+    rt_wifi_sdio_init();
     if (rt_check_sdio_ready() != 0)
     {
         rt_kprintf("sdio init fail\n");
@@ -166,6 +257,7 @@ static int wifi_set_bt_channel_map_adapter(void *arg, int wifi_ch)
 {
 #ifdef RT_USING_BT
     if (wifi_ch <= 0) return -1;
+    if (wifi_ch > 14) return 0;
     int f_center;
     if (wifi_ch == 14)
         f_center = 2484;
@@ -199,7 +291,9 @@ static int wifi_set_bt_channel_map_adapter(void *arg, int wifi_ch)
 static int wifi_set_ble_channel_map_adapter(void *arg, int wifi_ch)
 {
 #ifdef BSP_BLE_SIBLES
+
     if (wifi_ch <= 0) return -1;
+    if (wifi_ch > 14) return 0;
     int f_center;
     if (wifi_ch == 14)
         f_center = 2484;
@@ -247,9 +341,9 @@ static void wifi_suspend_adapter(void *arg)
  * @brief Resume adapter (matches `void (*)(void*)`).
  * @param arg Unused.
  */
-static void wifi_resume_adapter(void *arg)
+static int wifi_resume_adapter(void *arg)
 {
-    rt_wifi_resume();
+    return rt_wifi_resume();
 }
 /**
  * @brief Detect sleep adapter (matches `void (*)(void*)`).
@@ -265,7 +359,7 @@ static int wifi_get_fwk_maxsize_adapter(void *arg, char *boot_mode)
     int size = 0;
     if (!rt_strcmp(boot_mode, "dram"))
     {
-#ifdef SKW_BOOT_MODE_RAM
+#if SKW_BOOT_MODE_RAM
         size = sizeof(boot_dram_buff);
 #else
         if (dfs_file_stat(WIFI_DRAM_PATH, &boot_file_stat) == 0)
@@ -293,7 +387,7 @@ static int wifi_get_fwk_maxsize_adapter(void *arg, char *boot_mode)
     }
     else if (!rt_strcmp(boot_mode, "iram"))
     {
-#ifdef SKW_BOOT_MODE_RAM
+#if SKW_BOOT_MODE_RAM
         size = sizeof(boot_iram_buff);
 #else
         if (dfs_file_stat(WIFI_IRAM_PATH, &boot_file_stat) == 0)
@@ -320,7 +414,7 @@ static int wifi_get_fwk_maxsize_adapter(void *arg, char *boot_mode)
     }
     else if (!rt_strcmp(boot_mode, "calibration"))
     {
-#ifdef SKW_BOOT_MODE_RAM
+#if SKW_BOOT_MODE_RAM
         size = sizeof(seekwave_buff);
 #else
         if (dfs_file_stat(WIFI_CALIBRATION_PATH, &boot_file_stat) == 0)
@@ -356,7 +450,7 @@ static int wifi_get_fwk_code_adapter(void *arg, char *boot_mode, uint32_t lseek)
     if (!out_buf || !boot_mode)
         return 0;
 
-#ifdef SKW_BOOT_MODE_RAM
+#if SKW_BOOT_MODE_RAM
     /*
      * 从内存数组分段获取 Wi‑Fi 固件：
      *  - 正常情况下每次返回 4KB 数据；
@@ -633,6 +727,8 @@ int rt_wifi_init(void)
         ctl->set_channel_map.bt_cb = wifi_set_bt_channel_map_adapter;
         ctl->set_channel_map.ble_cb = wifi_set_ble_channel_map_adapter;
         ctl->set_channel_map.arg = RT_NULL;
+        ctl->flag_t = WIFI_DEVICE_NULL;
+        ctl->band_2g_5g = WIFI_BOAND_2G_5G;
     }
     if (wifi_fwk_file_stat() != 0)
     {
@@ -642,5 +738,5 @@ int rt_wifi_init(void)
     swt6621s_wlan_mgnt_init();
     return 0;
 }
-//MSH_CMD_EXPORT(rt_wifi_init, rt wifi init);
+
 INIT_APP_EXPORT(rt_wifi_init);

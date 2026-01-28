@@ -33,4 +33,7 @@ menuconfig BSP_WIFI_SWT6621
                 string "wifi debug file path"
                 default "wifi/debug"
         endif
+        config WIFI_SDIO_NUM
+            int "SWT6621 SDIO port number, 0-SDHCI1; 1-SDHCI2; 2-SDIO"
+            default 0
     endif

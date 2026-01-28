@@ -51,7 +51,7 @@ typedef void (*wifi_suspend_cb_t)(void *arg);
  * @brief Resume callback signature.
  * @param arg User-provided argument passed to the callback (optional).
  */
-typedef void (*wifi_resume_cb_t)(void *arg);
+typedef int (*wifi_resume_cb_t)(void *arg);
 /**
  * @brief Detect-sleep callback signature.
  * @param arg User-provided argument passed to the callback (optional).
@@ -109,6 +109,7 @@ typedef int (*wifi_set_bt_channel_map_t)(void *arg, int wifi_ch);
  * @return          0 on success; negative value on failure.
  */
 typedef int (*wifi_set_ble_channel_map_t)(void *arg, int wifi_ch);
+
 /**
  * @brief Container for a suspend callback and its argument.
  */
@@ -171,6 +172,25 @@ struct wifi_set_channel_map_cb
     void *arg;
 };
 
+enum wifi_device_flag
+{
+    WIFI_DEVICE_NULL,
+    WIFI_DEVICE_INITING,
+    WIFI_DEVICE_SCANING,
+    WIFI_DEVICE_CONNECTING,
+    WIFI_DEVICE_IDLE,
+};
+enum wifi_sdio_num_flag
+{
+    WIFI_SDIO_SDHCI1,
+    WIFI_SDIO_SDHCI2,
+    WIFI_SDIO_LINE,
+};
+enum wifi_boand_flag
+{
+    WIFI_BOAND_2G,
+    WIFI_BOAND_2G_5G,
+};
 /**
  * @brief Aggregated WiFi control callbacks.
  *
@@ -186,6 +206,8 @@ struct wifi_ctl
     struct get_fwk_maxsize_cb get_fwk_maxsize;
     struct wifi_get_ram_dump_path_cb get_ram_dump_path;
     struct wifi_set_channel_map_cb set_channel_map;
+    uint32_t flag_t;
+    uint32_t band_2g_5g;
 };
 /**
  * @brief Initialize the SWT6621S WLAN management layer.
