@@ -192,6 +192,7 @@ static int bt_app_interface_event_handle(uint16_t type, uint16_t event_id, uint8
                 pan_conn = 1;
             }
         }
+        break;
         case BT_NOTIFY_COMMON_KEY_MISSING:
         {
             bt_notify_device_base_info_t *info =
@@ -372,34 +373,35 @@ MSH_CMD_EXPORT(pan_cmd, Connect PAN to last paired device);
 static void check_dynamic_cmd(int argc, char **argv)
 {
     LOG_I("Checking for new firmware version with dynamic chip_id...");
-    
+
     // Register the device first
     int reg_result = register_device_with_server();
-    if (reg_result != 0) {
+    if (reg_result != 0)
+    {
         LOG_W("Device registration failed");
     }
 
     // Get the chip ID and build the dynamic OTA URL
-    char* chip_id = get_client_id();
-    char* dynamic_ota_url = build_ota_query_url(chip_id);
+    char *chip_id = get_client_id();
+    char *dynamic_ota_url = build_ota_query_url(chip_id);
 
     // Query the latest version
     int result = dfu_pan_query_latest_version(dynamic_ota_url, VERSION, latest_version, sizeof(latest_version));
-    
+
     // Determine whether there is an update based on the return value
     BOOL needs_update = (result > 0) ? RT_TRUE : RT_FALSE;
-    
-    if (needs_update) 
+
+    if (needs_update)
     {
-        
+
         LOG_I("New firmware version %s available. Type 'go' to start update.", latest_version);
         if (dfu_pan_set_update_flags() != 0)// Set the update flag position
         {
             LOG_E("Failed to mark versions for update");
             return;
         }
-    } 
-    else 
+    }
+    else
     {
         LOG_I("No new firmware version available.");
     }
@@ -416,26 +418,27 @@ static void reset_to_dload_cmd(int argc, char **argv)
     {
         struct firmware_file_info temp_version;
         if (dfu_pan_get_firmware_file_info(i, &temp_version) == 0 &&
-            temp_version.needs_update)
+                temp_version.needs_update)
         {
             needs_update = RT_TRUE;
             break;
         }
     }
-    
-    if (!needs_update) {
+
+    if (!needs_update)
+    {
         LOG_I("No firmware files need update.");
         return;
     }
-    
+
     LOG_I("System will reboot to OTA mode...");
-    
+
     // Delay for a while to ensure the message is displayed
     rt_thread_mdelay(2000);
-    
+
     // Restart the system
     HAL_PMU_Reboot();
-    
+
 }
 MSH_CMD_EXPORT(reset_to_dload_cmd, register device and check for new firmware version with dynamic chip_id);
 
