@@ -131,10 +131,9 @@ __ROM_USED void rt_hw_systick_init(void)
     HAL_RCC_HCPU_ClockSelect(RCC_CLK_MOD_HP_TICK, RCC_CLK_TICK_HRC48);
     /* workaround: add delay to avoid systick config failure in some chips due to known reason */
     HAL_Delay_us(200);
-    MODIFY_REG(hwp_hpsys_rcc->CFGR, HPSYS_RCC_CFGR_TICKDIV_Msk,
-               MAKE_REG_VAL(60, HPSYS_RCC_CFGR_TICKDIV_Msk, HPSYS_RCC_CFGR_TICKDIV_Pos));
+    HAL_RCC_HCPU_SetTickDiv(60);
     HAL_SYSTICK_Config(800000 / RT_TICK_PER_SECOND);
-    HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK_DIV8);
+    HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_TICK_CLK);
 
 #else
 
@@ -149,7 +148,7 @@ __ROM_USED void rt_hw_systick_init(void)
         HAL_SYSTICK_Config(32768 / 2 / RT_TICK_PER_SECOND);
     }
     //TODO: config clock source for 52x
-    HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK_DIV8);
+    HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_TICK_CLK);
 #else
     HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq(CORE_ID_DEFAULT) / RT_TICK_PER_SECOND);
     HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
