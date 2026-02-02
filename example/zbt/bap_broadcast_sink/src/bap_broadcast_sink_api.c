@@ -17,17 +17,6 @@ BUILD_ASSERT(IS_ENABLED(CONFIG_SCAN_SELF) || IS_ENABLED(CONFIG_SCAN_OFFLOAD),
 
 #define LOG_INTERVAL 1000U
 
-#if 0
-    //#undef LOG_DBG
-    //#define LOG_DBG(fmt,...) rt_kprintf("%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
-    #undef LOG_INF
-    #define LOG_INF(fmt,...) rt_kprintf("%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
-    #undef LOG_WRN
-    #define LOG_WRN(fmt,...) rt_kprintf("W:%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
-    #undef LOG_ERR
-    #define LOG_ERR(fmt,...) rt_kprintf("E:%s "fmt"\n",__FUNCTION__,##__VA_ARGS__)
-#endif
-
 #if defined(CONFIG_SCAN_SELF)
     #define ADV_TIMEOUT K_SECONDS(CONFIG_SCAN_DELAY)
 #else /* !CONFIG_SCAN_SELF */
@@ -150,30 +139,6 @@ static int audio_callback_play(audio_server_callback_cmt_t cmd, void *callback_u
     {
     }
     return 0;
-}
-
-static uint32_t get_samplerate(enum lc3_srate r)
-{
-    uint32_t s;
-    switch (r)
-    {
-    case LC3_SRATE_8K:
-        s = 48000;
-        break;
-    case LC3_SRATE_16K:
-        s = 16000;
-        break;
-    case LC3_SRATE_24K:
-        s = 24000;
-        break;
-    case LC3_SRATE_32K:
-        s = 32000;
-        break;
-    default:
-        s = 48000;
-        break;
-    }
-    return s;
 }
 
 /* Consumer thread of the decoded stream data */
@@ -405,12 +370,23 @@ static void stream_started_cb(struct bt_bap_stream *stream)
 
     if (!client)
     {
+        int freq_hz = 48000;
+        int ret = bt_audio_codec_cfg_get_freq(sink_stream->stream.codec_cfg);
+        if (ret > 0)
+        {
+            freq_hz = bt_audio_codec_cfg_freq_to_freq_hz(ret);
+        }
+        else
+        {
+            printk("Error: Codec frequency not set, cannot start codec.");
+        }
         audio_parameter_t pa = {0};
+        pa.is_bap_sink = 1;
         pa.write_bits_per_sample = 16;
         pa.write_channnel_num = 1;
         pa.read_bits_per_sample = 16;
         pa.write_cache_size = BAP_BROADCAST_SINK_CACHE_SIZE;;
-        pa.write_samplerate = get_samplerate(sink_stream->lc3_decoder->sr_pcm);
+        pa.write_samplerate = (uint32_t)freq_hz;
         client = audio_open(AUDIO_TYPE_BT_MUSIC, AUDIO_TX, &pa, audio_callback_play, &client);
         RT_ASSERT(client);
     }

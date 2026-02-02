@@ -34,6 +34,8 @@ void bf0_audprc_eq_enable_offline(uint8_t is_enable);
 void bf0_audprc_stop();
 void mic_gain_decrease(int8_t db);
 int Set_mic_gain(int8_t value);
+void audprc_clock_set(uint8_t is_use_pll);
+void audcodec_clock_set(uint8_t use_pll);
 
 #endif
 

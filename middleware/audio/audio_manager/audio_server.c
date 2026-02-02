@@ -1669,6 +1669,17 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
     HAL_DBG_DWT_Reset();
 #endif
 
+    if (client->parameter.is_bap_sink)
+    {
+        audprc_clock_set(1);
+        audcodec_clock_set(1);
+    }
+    else
+    {
+        audprc_clock_set(0);
+        audcodec_clock_set(0);
+    }
+
     //4. config TX
     if (need_tx_init)
     {

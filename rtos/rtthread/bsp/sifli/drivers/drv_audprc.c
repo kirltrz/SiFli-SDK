@@ -447,28 +447,38 @@ const audprc_src_table_t src_table[] =
 };
 
 
-const AUDPRC_CLK_CONFIG_TYPE   audprc_clk_cfg_tb[9] =
+const AUDPRC_CLK_CONFIG_TYPE   audprc_clk_cfg_tb_pll[9] =
 {
-#if ALL_CLK_USING_PLL
     {48000, 1,  1000},
     {32000, 1,  1500},
     {24000, 1,  2000},
     {16000, 1,  3000},
     {12000, 1,  4000},
     { 8000, 1,  6000},
-#else
+    {44100, 1,  1000},
+    {22050, 1,  2000},
+    {11025, 1,  4000},
+};
+const AUDPRC_CLK_CONFIG_TYPE   audprc_clk_cfg_tb_xtal[9] =
+{
     {48000, 0,  1000},
     {32000, 0,  1500},
     {24000, 0,  2000},
     {16000, 0,  3000},
     {12000, 0,  4000},
     { 8000, 0,  6000},
-#endif
     {44100, 1,  1000},
     {22050, 1,  2000},
     {11025, 1,  4000},
 };
+
 static uint8_t g_rx_stop;
+static uint8_t use_pll_all;
+
+void audprc_clock_set(uint8_t use_pll)
+{
+    use_pll_all = use_pll;
+}
 
 AUDPRC_HandleTypeDef *get_audprc_handle()
 {
@@ -661,14 +671,18 @@ static rt_err_t bf0_audprc_src(struct rt_audio_device *audio, uint16_t source, u
     struct bf0_audio_prc *audprc = (struct bf0_audio_prc *) audio;
     AUDPRC_HandleTypeDef *haudprc = (AUDPRC_HandleTypeDef *) & (audprc->audprc);
     int length = sizeof(src_table) / (sizeof(audprc_src_table_t));
-
+    const AUDPRC_CLK_CONFIG_TYPE *clk = &audprc_clk_cfg_tb_xtal[0];
+    if (use_pll_all)
+    {
+        clk = &audprc_clk_cfg_tb_pll[0];
+    }
     for (i = 0; i < 9; i++)
     {
-        if (dest == audprc_clk_cfg_tb[i].samplerate)
+        if (dest == clk[i].samplerate)
         {
-            haudprc->Init.adc_div = audprc_clk_cfg_tb[i].clk_div;
-            haudprc->Init.dac_div = audprc_clk_cfg_tb[i].clk_div;
-            haudprc->Init.clk_sel = audprc_clk_cfg_tb[i].clk_src_sel;
+            haudprc->Init.adc_div = clk[i].clk_div;
+            haudprc->Init.dac_div = clk[i].clk_div;
+            haudprc->Init.clk_sel = clk[i].clk_src_sel;
             break;
         }
     }
