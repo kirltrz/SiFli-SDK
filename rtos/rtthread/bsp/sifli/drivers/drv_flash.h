@@ -267,6 +267,18 @@ int rt_nand_erase(uint32_t addr, int size);
 int rt_nand_read_page(uint32_t addr, uint8_t *data, int size, uint8_t *spare, int spare_len);
 
 /**
+* @brief  Read nand flash data and return whether correctable ecc error happens.
+* @param[in]  addr, flash address need to read.
+* @param[out] data, output data buffer.
+* @param[in]  size, data size to read.
+* @param[out] spare, buffer to save oob data.
+* @param[in]  spare_len, oob data size to read.
+* @param[out] ecc_corrected whether ecc error is corrected
+* @retval read data size.
+*/
+int rt_nand_read_page2(uint32_t addr, uint8_t *data, int size, uint8_t *spare, int spare_len, rt_bool_t *ecc_corrected);
+
+/**
 * @brief  Write nand flash data.
 * @param[in]  addr, flash address need to write.
 * @param[in]  buf, input data buffer.

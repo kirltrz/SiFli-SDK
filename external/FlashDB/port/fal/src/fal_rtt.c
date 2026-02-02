@@ -387,6 +387,35 @@ static rt_err_t mtd_nand_readpage_with_offset(struct rt_mtd_nand_device *device,
     return 0;
 }
 
+static rt_err_t mtd_nand_readpage_with_offset2(struct rt_mtd_nand_device *device,
+        rt_off_t page,     rt_uint32_t offset,
+        rt_uint8_t *data, rt_uint32_t data_len,
+        rt_uint8_t *spare, rt_uint32_t spare_len,
+        rt_bool_t *ecc_corrected)
+{
+    struct fal_flash_dev *fal_dev;
+    int res;
+
+    fal_dev = (struct fal_flash_dev *)device->parent.user_data;
+
+    page += device->block_start * device->pages_per_block;
+
+    if (offset + data_len > SPI_NAND_PAGE_SIZE)
+    {
+        log_i("mtd_nand_readpage_with_offset offset + length over page %d\n", offset + data_len);
+        return RT_MTD_ENOMEM;
+    }
+
+    res = rt_nand_read_page2(fal_dev->addr + page * device->page_size + offset, data, data_len, spare, spare_len, ecc_corrected);
+    if (res <= 0)
+    {
+        log_i("rt_nand_read_page RES %d\n", res);
+        return RT_MTD_ENOMEM;
+    }
+
+    return 0;
+}
+
 
 static rt_err_t mtd_nand_writepage(struct rt_mtd_nand_device *device,
                                rt_off_t page,
@@ -456,6 +485,7 @@ static const struct rt_mtd_nand_driver_ops spi_nand_ops =
     .read_id = mtd_nand_readid,
     .read_page = mtd_nand_readpage,
     .read_page_with_offset = mtd_nand_readpage_with_offset,
+    .read_page_with_offset2 = mtd_nand_readpage_with_offset2,
     .write_page = mtd_nand_writepage,
     .move_page = mtd_nand_movepage,
     .erase_block = mtd_nand_eraseblk,

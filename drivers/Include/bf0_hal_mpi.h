@@ -45,6 +45,16 @@ extern "C" {
 #define FLASH_CLK_INVERT_THD            (100000000)
 #endif /* SF32LB52X */
 
+
+/** @defgroup MPI_Error_Code MPI Error Code
+  * @{
+  */
+#define MPI_ERROR_ECC           0x8000UL /*!< ECC Error, might be correctable, low bits are detailed ecc status */
+
+/**
+  * @}
+  */
+
 /**
   * @brief  SPI_FLASH configure tyep
   */

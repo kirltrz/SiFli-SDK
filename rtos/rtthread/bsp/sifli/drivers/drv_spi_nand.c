@@ -306,6 +306,98 @@ int rt_nand_read_page(uint32_t addr, uint8_t *data, int size, uint8_t *spare, in
     return res;
 }
 
+int rt_nand_read_page2(uint32_t addr, uint8_t *data, int size, uint8_t *spare, int spare_len, rt_bool_t *ecc_corrected)
+{
+    int res;
+    if (nand_index < 0)
+        return 0;
+
+    FLASH_HandleTypeDef *hflash = &(spi_nand_handle.handle);
+
+    if (hflash == NULL || size > nand_pagesize || hflash->buf_mode == 0)  // only support read 1 page
+    {
+        RT_ASSERT(0);
+        return 0;
+    }
+    if (addr >= hflash->base)
+        addr -= hflash->base;
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_lock();
+#endif
+#ifdef BSP_USING_BBM
+    int blk, page, offset;
+
+    blk = addr / nand_blksize;
+    page = (addr / nand_pagesize) & (nand_blksize / nand_pagesize - 1);
+    offset = addr & (nand_pagesize - 1);
+
+    if (blk >= 8192) // max support 8Gb ? for address error issue
+        RT_ASSERT(0);
+
+    rt_nand_lock();
+    res = bbm_read_page(blk, page, offset, data, size, spare, spare_len);
+    if (ecc_corrected)
+    {
+        if ((res > 0) && (hflash->ErrorCode & MPI_ERROR_ECC))
+        {
+            *ecc_corrected = RT_TRUE;
+        }
+        else
+        {
+            *ecc_corrected = RT_FALSE;
+        }
+    }
+    rt_nand_unlock();
+#else
+
+    //rt_thread_delay(1);
+    rt_nand_lock();
+    SCB_InvalidateDCache_by_Addr((void *)hflash->base, nand_pagesize + SPI_NAND_MAXOOB_SIZE);
+    if (((addr & nand_blksize) != 0) && (hflash->wakeup != 0))
+        SCB_InvalidateDCache_by_Addr((void *)(hflash->base + (1 << 12)), nand_pagesize + SPI_NAND_MAXOOB_SIZE);// TODO: only 2048 page size has plane select issue
+#if (NAND_BUF_CPY_MODE == 1)
+    SCB_InvalidateDCache_by_Addr(data, size);
+#endif
+
+    local_edma_lock();
+    res = HAL_NAND_READ_WITHOOB(hflash, addr, data, size, spare, spare_len);
+    local_edma_unlock();
+
+    if (ecc_corrected)
+    {
+        if ((res > 0) && (hflash->ErrorCode != 0))
+        {
+            *ecc_corrected = RT_TRUE;
+        }
+        else
+        {
+            *ecc_corrected = RT_FALSE;
+        }
+    }
+
+    rt_nand_unlock();
+    if (res <= 0)
+        LOG_E("NAND Read2 error code %d\n", hflash->ErrorCode);
+#endif
+
+#if 0   // debug use, for some case controller sames not work
+    int i;
+    uint8_t *tbuf = data;
+    for (i = 0; i < 128; i++)
+    {
+        if (*tbuf != 0xcc)
+            break;
+        tbuf++;
+    }
+    if (i == 128)   // read all cc ? status error?
+        RT_ASSERT(0);
+#endif
+#ifdef BSP_USING_SWITCH_MPI2_SDIO
+    rt_switch_mpi2_unlock();
+#endif
+    return res;
+}
+
 int rt_nand_write_page(uint32_t addr, const uint8_t *buf, int size, const uint8_t *spare, int spare_len)
 {
     int res = 0;
@@ -361,6 +453,7 @@ int rt_nand_write_page(uint32_t addr, const uint8_t *buf, int size, const uint8_
     SCB_InvalidateDCache_by_Addr((void *)hflash->data_buf, nand_pagesize + SPI_NAND_MAXOOB_SIZE);
 
     rt_nand_lock();
+
 #ifdef BSP_USING_BBM
     int blk2, page2;
     blk2 = addr / nand_blksize;
@@ -804,6 +897,34 @@ static rt_err_t _nand_readpage_with_offset(struct rt_mtd_nand_device *device,
     return 0;
 }
 
+static rt_err_t _nand_readpage_with_offset2(struct rt_mtd_nand_device *device,
+        rt_off_t page,     rt_uint32_t offset,
+        rt_uint8_t *data, rt_uint32_t data_len,
+        rt_uint8_t *spare, rt_uint32_t spare_len,
+        rt_bool_t *ecc_corrected)
+{
+    uint32_t base = (uint32_t)device->parent.user_data;
+    int res;
+
+    page += device->block_start * device->pages_per_block;
+
+    if (offset + data_len > nand_pagesize)
+    {
+        LOG_I("_nand_readpage_with_offset offset + length over page %d\n", offset + data_len);
+        return RT_MTD_ENOMEM;
+    }
+
+    res = rt_nand_read_page2(base + page * nand_pagesize + offset, data, data_len, spare, spare_len, ecc_corrected);
+    if (res <= 0)
+    {
+        LOG_I("rt_nand_read_page RES %d\n", res);
+        return RT_MTD_ENOMEM;
+    }
+
+    return 0;
+}
+
+
 static rt_err_t _nand_writepage(struct rt_mtd_nand_device *device,
                                 rt_off_t page,
                                 const rt_uint8_t *data, rt_uint32_t data_len,
@@ -865,6 +986,7 @@ static const struct rt_mtd_nand_driver_ops spi_nand_ops =
     .read_id = _nand_readid,
     .read_page = _nand_readpage,
     .read_page_with_offset = _nand_readpage_with_offset,
+    .read_page_with_offset2 = _nand_readpage_with_offset2,
     .write_page = _nand_writepage,
     .move_page = _nand_movepage,
     .erase_block = _nand_eraseblk,

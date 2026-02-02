@@ -557,6 +557,7 @@ __weak int HAL_NAND_GET_ECC_STATUS(FLASH_HandleTypeDef *handle)
     case BIT2_IN_C0_T1:
     case BIT2_IN_C0_T2: // TODO: read 0xf0 or some other reg for ext ecc status if needed
     case BIT2_IN_C0_T3:
+    case BIT2_IN_C0_T4:
         sta &= 0x30;
         break;
     case BIT3_IN_C0_T1:
@@ -751,7 +752,7 @@ __HAL_ROM_USED int HAL_NAND_GET_ECC_RESULT(FLASH_HandleTypeDef *handle)
     if (sta == 0)
         return 0;
 
-    handle->ErrorCode |= 0X8000;
+    handle->ErrorCode |= MPI_ERROR_ECC;
     res = 0;
 
     ecc_res_mode = (NAND_ECC_MODE_T)((handle->dualFlash & NAND_ECC_FULL_RESERVED) >> NAND_ECC_START_POS);
@@ -825,7 +826,7 @@ __HAL_ROM_USED int HAL_NAND_READ_WITHOOB(FLASH_HandleTypeDef *handle, uint32_t a
     int res = HAL_NAND_GET_ECC_RESULT(handle);
     if (res != 0)
     {
-        handle->ErrorCode = res | 0x8000;
+        handle->ErrorCode = res | MPI_ERROR_ECC;
         return 0;
     }
 
