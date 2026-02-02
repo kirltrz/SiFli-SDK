@@ -226,7 +226,7 @@ static int rthw_sdio_wait_completed(struct rthw_sdio *sdio)
     SD_TypeDef *hw_sdio = sdio->sdio_des.hw_sdio;
 
     if (rt_event_recv(&sdio->event, 0xffffffff, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR,
-                      rt_tick_from_millisecond(5000), &status) != RT_EOK)
+                      rt_tick_from_millisecond(500), &status) != RT_EOK)
     {
         LOG_E("wait %d completed timeout 0x%08x,arg 0x%08x\n", cmd->cmd_code, HAL_SDMMC_GET_STA(hw_sdio), cmd->arg);
         cmd->err = -RT_ETIMEOUT;
