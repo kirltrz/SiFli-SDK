@@ -498,7 +498,7 @@ static rt_err_t _write_block(struct rt_spi_device *device, const void *buffer, u
     {
         /* initial message */
         message.send_buf = buffer;
-        message.recv_buf = (void *)buffer;
+        message.recv_buf = (void *)RT_NULL; // no need recv
         message.length = block_size;
         message.cs_take = message.cs_release = 0;
 
