@@ -36,7 +36,7 @@ def analyze_file(config_file, scancode_file, scanned_files_dir):
     report_missing_license = lic_config.get("report_missing", False)
     extensions_config = config.get("extensions", [])
     extension_paths = [rule.get("path") for rule in extensions_config if rule.get("path")]
-    extension_rules = {rule.get("path"): rule.get("license") for rule in extensions_config if rule.get("path") and rule.get("license")}
+    extension_rules = {rule.get("path"): rule for rule in extensions_config if rule.get("path")}
     # more_cat = []
     # more_cat.append(lic_cat)
     more_lic = lic_config.get('additional', [])
@@ -85,27 +85,32 @@ def analyze_file(config_file, scancode_file, scanned_files_dir):
 
             if check:
                 matched_ext_paths = [p for p in extension_paths if p in orig_path]
+                matched_rule = {}
                 if matched_ext_paths:
                     # Use the longest match to avoid less-specific parent paths winning.
                     matched_path = max(matched_ext_paths, key=len)
-                    matched_license = extension_rules.get(matched_path, [])
+                    matched_rule = extension_rules.get(matched_path, {})
 
-                    allowed_licenses = matched_license if isinstance(matched_license, list) else [matched_license]
-                    if not any(allowed and allowed in detected_expr for allowed in allowed_licenses) and report_invalid_license:
-                        report += ("* {} has invalid license: {}\n".format(orig_path, detected_expr))
-                    continue
-                if not licenses and report_missing_license:
-                    report += ("* {} missing license.\n".format(orig_path))
-                else:
-                    allowed_licenses = more_lic if isinstance(more_lic, list) else [more_lic]
-                    if not any(allowed and allowed in detected_expr for allowed in allowed_licenses) and report_invalid_license:
-                        report += ("* {} has invalid license: {}\n".format(orig_path, detected_expr))
-                    # for lic in licenses:
-                    #     if lic['license_expression_spdx'] not in more_lic and report_invalid_license:
-                    #         report += ("* {} has invalid license: {}\n".format(orig_path, lic['license_expression_spdx']))
-                    #     if lic['license_expression_spdx'] == 'unknown-spdx' and report_unknown_license:
-                    #         report += ("* {} has unknown SPDX: {}\n".format(orig_path, lic['license_expression_spdx']))
-                if check_copyright and not file['copyrights'] and \
+                ignore_license = matched_rule.get("ignore_license", False)
+                ignore_copyright = matched_rule.get("ignore_copyright", False)
+                matched_license = matched_rule.get("license")
+
+                if not ignore_license:
+                    if not licenses and report_missing_license:
+                        report += ("* {} missing license.\n".format(orig_path))
+                    else:
+                        if matched_license:
+                            allowed_licenses = matched_license if isinstance(matched_license, list) else [matched_license]
+                        else:
+                            allowed_licenses = more_lic if isinstance(more_lic, list) else [more_lic]
+                        if not any(allowed and allowed in detected_expr for allowed in allowed_licenses) and report_invalid_license:
+                            report += ("* {} has invalid license: {}\n".format(orig_path, detected_expr))
+                        # for lic in licenses:
+                        #     if lic['license_expression_spdx'] not in more_lic and report_invalid_license:
+                        #         report += ("* {} has invalid license: {}\n".format(orig_path, lic['license_expression_spdx']))
+                        #     if lic['license_expression_spdx'] == 'unknown-spdx' and report_unknown_license:
+                        #         report += ("* {} has unknown SPDX: {}\n".format(orig_path, lic['license_expression_spdx']))
+                if check_copyright and not ignore_copyright and not file['copyrights'] and \
                         file.get("programming_language") != 'CMake':
                     report += ("* {} missing copyright.\n".format(orig_path))
 

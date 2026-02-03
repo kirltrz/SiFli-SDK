@@ -69,6 +69,10 @@ extensions:
     license:
       - GPL-2.0-only
       - GPL-2.0-or-later
+  - path:
+      "filesystems/dhara/dhara"
+    ignore_license: true
+    ignore_copyright: true
 ```
 
 ### 配置选项
@@ -89,9 +93,11 @@ extensions:
   - `langs`：按 `scancode-toolkit` 识别的编程语言排除（例如 `HTML`）。
 
 - `extensions`
-  - 用于为特定路径配置“例外许可证允许列表”。每条规则包含：
+  - 用于为特定路径配置“例外规则”。每条规则包含：
     - `path`：路径子串匹配（例如 `external/ffmpeg`）。
-    - `license`：该路径下允许的 SPDX 许可证列表。
+    - `license`：该路径下允许的 SPDX 许可证列表（可选）。
+    - `ignore_license`：是否忽略该路径下的许可证检查（可选）。
+    - `ignore_copyright`：是否忽略该路径下的版权检查（可选）。
 
 ## 检查逻辑说明
 
@@ -104,13 +110,16 @@ extensions:
 
 - 许可证允许列表：
   - 全局允许列表 = `license.additional + license.main`，并额外允许 `unknown-license-reference`（脚本默认加入，用于规避某些包含“license”字样导致的误报）。
-  - 若文件路径命中 `extensions` 的某条规则，则使用该规则的 `license` 作为允许列表；当命中多条时，脚本选择最长匹配路径（更具体的规则优先）。
+  - 若文件路径命中 `extensions` 的某条规则：
+    - 当该规则提供 `license` 时，使用该列表作为该路径的允许许可列表。
+    - 当该规则未提供 `license` 时，回退到全局允许列表。
+    - 若设置了 `ignore_license: true`，则跳过该路径下的许可证检查与缺失许可证检查。
   - 当 `scancode-toolkit` 返回组合表达式（例如 `A AND B AND C`）：脚本不会严格按 SPDX 逻辑求值，而是采用“反向包含”策略——只要该长字符串中包含任意一个允许的许可证 ID，即判定为 PASS。
-  - 注意：命中 `extensions` 路径规则的文件，脚本仅检查“已检测到的许可证是否在该路径允许列表中”，并会跳过后续的缺失许可证/缺失版权检查。
 
 - 版权缺失检查：
   - 仅在 `copyright.check: true` 时启用。
   - 若文件未检测到版权且其 `programming_language` 不是 `CMake`，则报告缺失版权。
+  - 命中 `extensions` 的规则且设置 `ignore_copyright: true` 时，跳过该路径下的版权检查。
 
 ## 使用方法
 
