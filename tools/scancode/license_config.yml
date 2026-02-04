@@ -29,6 +29,7 @@ exclude:
     - "*ffmpeg/config.h"
     - rtconfig.py
     - proj.conf
+    - SConstruct.py
   langs:
     - HTML
 extensions:
