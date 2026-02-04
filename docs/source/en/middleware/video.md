@@ -1,13 +1,13 @@
-#### <center>Video Document</center>
+# Video Document
 video use ffmpeg，see exernal/ffmpeg/Kconfig，use software decode only, no harware accelerator，video should convert codec to h264 or mjpeg, and should use baseline profile。 and support ezip encoder for this chip，Use hardware decoding for ezip. Ezip does not support inter-frame compression, meaning each image is compressed with ezip individually. Combined with audio, it still uses MP4 packaging, and the external interface remains unchanged.
-##### memory footprint
+## memory footprint
 code size:      310K bytes
 global var size:      1K bytes
 malloc:  3.3M byte 240 * 320 (3 frame cache). 
-##### performance
+## performance
 - The maximum playback size around 240 * 320 can reach 30fps. If it’s larger, the frame rate needs to be reduced. It also depends on the complexity of the image details; if the details are too complex, the compression rate is low and decoding slowly.
 - The previous software required the width of the converted video to be a multiple of 16. (Otherwise, there will be display artifacts, because after decoding with ffmpeg, each line is padded to align to a multiple of 16, which reduces performance as data has to be copied line by line from ffmpeg to display correctly)
-##### suupored codec
+## suupored codec
  - h264
  - h263
  - mp3
@@ -16,15 +16,15 @@ malloc:  3.3M byte 240 * 320 (3 frame cache).
  - ezip
  - opus
  - vorbis
-##### Supported audio and video container formats
+## Supported audio and video container formats
  - ogg
  - mp4
-##### menuconfig
+## menuconfig
 You need to enable PKG_USING_FFMPEG in menuconfig to support ffmpeg. To support audio in mp4 files, you also need to enable PKG_USING_FFMPEG_AUDIO. To support online videos, you need to enable PKG_USING_FFMPEG_HTTP. To support mjpeg, enable PKG_USING_FFMPEG_MJPEG (hardware decoding is only available on the 58x chip platform; software decoding is not recommended).
 ![](./png/menuconfig_ffmpeg.png)
-##### toolchain
+## toolchain
 Video files are usually large and the formats can be quite complex, so they need to be converted before they can be played.
-###### ffmpeg toolchain
+### ffmpeg toolchain
  https://ffmpeg.org
   * Video conversion, trimming, and scaling tool ffmpeg.exe
   * probe tool ffprobe.exe
@@ -48,22 +48,22 @@ ffmpeg -i input.mp4 -profile:v baseline -level 1.0 -r 30 -acodec mp3 -ar 44100 -
 ffmpeg -i input.mp4 -c:v mjpeg -c:a copy -vf "colorspace=bt709:iall=bt470bg:range=pc" video_example.mp4
 ```
 use ffprobe.exe to probe，use ffplay.exe to play
-###### Sifli toolchain
+### Sifli toolchain
    An image conversion tool built on the official FFmpeg toolchain. Instructions for use are provided in the documentation under the tool.
    GraphicsTool https://wiki.sifli.com/tools/index.html
    If you want to convert to the ezip image encoding format, you can only use this tool.
    EZIP format cannot be played with ffplay.exe; it can only be played on the board.
-##### Viedo convert
+## Viedo convert
 - Video conversion can use the official ffmpeg tool mentioned above (does not support ezip) or the Sifli toolchain. For using the official tool, you can check the help with ffmpeg -h or ffmpeg -h full, or you can search online for commonly used ffmpeg commands.
 - The required converted width is a multiple of 16, and the encoding format is baseline.
-##### example
+## example
 - local file player：
 It turns out that the disk directory contains an empty file, which needs to be replaced with the converted baseline format MP4 file.  
 https://gitee.com/SiFli/sifli-sdk/tree/main/example/multimedia/lvgl/lvgl_v8_media
 - network URL example：
 You need to turn on your phone's BT PAN and share the network and hotspot.
 https://gitee.com/SiFli/sifli-sdk/tree/main/example/multimedia/lvgl/streaming_media
-##### API
+## API
 API refrence media_dec.h
 ```c
 /**

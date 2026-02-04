@@ -1,13 +1,13 @@
-#### <center>视频文档</center>
+# 视频文档
 视频解码使用了ffmpeg引擎，需要配置ffmpeg，见external/ffmpeg/Kconfig，完全使用了软件解码，视频需要转换为h264或mjpeg简洁编码才能解码显示。也支持思澈自定义的ezip编码，使用硬件解码ezip。ezip不支持帧间压缩，就是每张图片用ezip压缩，再加上声音，还是使用mp4封装， 对外调用接口不变。
-##### 内存要求
+## 内存要求
 代码大小:      310K bytes
 全局变量:      1K bytes
 动态申请内存:  3.3M byte 240 * 320 (包含3帧视频YUV缓冲). 
-##### 性能指标
+## 性能指标
 - 最大播放尺寸在240 * 320左右可以达到30fps，再大了要降低帧率才行，也跟图像细节复杂度有关，细节太复杂，压缩率低，解码慢。
 - 目前软件要求转换后的视频宽度是16的整数倍。(否则会花屏，因为ffmepg解码后每行会padding对齐到16的整数倍，得降低性能从ffmpeg里一行行复制数据才能正常显示）
-##### 支持的音视频codec格式
+## 支持的音视频codec格式
  - h264
  - h263
  - mp3
@@ -16,17 +16,17 @@
  - ezip
  - opus
  - vorbis
-##### 支持的音视频封装格式
+## 支持的音视频封装格式
  - ogg
  - mp4
-##### 配置说明
+## 配置说明
 需要在menuconfig中打开PKG_USING_FFMPEG才能支持ffmpeg，如果要支持mp4文件中的音频，还要打开PKG_USING_FFMPEG_AUDIO， 如果要支持网络视频，还要打开PKG_USING_FFMPEG_HTTP。
 如果要支持mjpeg，要打开PKG_USING_FFMPEG_MJPEG（在58x芯片平台上才会硬件解码，软件解码不建议）  
 ![](./png/menuconfig_ffmpeg.png)
 
-##### 工具链
+## 工具链
 通常视频尺寸比较大，视频格式也比较复杂，需要转换后才能显示。
-###### ffmpeg 官方工具链
+### ffmpeg 官方工具链
  可以到 https://ffmpeg.org 下载ffmpeg工具链，下载解压后包含：
   * 视频转换、裁剪、缩放工具 ffmpeg.exe
   * 视频格式查看工具 ffprobe.exe
@@ -54,17 +54,17 @@ ffmpeg -i input.mp4 -c:v mjpeg -c:a copy -vf "colorspace=bt709:iall=bt470bg:rang
 
 转换后可以用ffprobe.exe看看文件格式， 也可以用ffplay.exe播放看看。
 
-###### 思澈工具链
+### 思澈工具链
    在ffmpeg官方工具链基础上封装的图像转换工具， 使用方法在工具下有文档。 
    GraphicsTool https://wiki.sifli.com/tools/index.html
    如果要转换为ezip图像编码格式，只能使用这个工具。
    ezip格式无法用ffplay.exe播放，只能在板子播放。
 
-##### 视频转换
+## 视频转换
 - 视频转换可以用上面提到的ffmpeg官方工具(不支持ezip)或思澈工具，官方工具使用可以ffmpeg -h或ffmpeg -h full查看帮助，也可以网络上搜索ffmpeg常用的命令。
 - 要求转换后的宽度是16的整数倍，编码格式为baseline
 
-##### example
+## example
 - 播放本地文件的例子：
 原来disk目录下是个空文件，需要用转换后的baseline格式mp4文件替换。  
 https://gitee.com/SiFli/sifli-sdk/tree/main/example/multimedia/lvgl/lvgl_v8_media
@@ -73,7 +73,7 @@ https://gitee.com/SiFli/sifli-sdk/tree/main/example/multimedia/lvgl/lvgl_v8_medi
 需要打开手机BT pan，并共享网络和热点。  
 https://gitee.com/SiFli/sifli-sdk/tree/main/example/multimedia/lvgl/streaming_media
 
-##### 重要数据结构
+## 重要数据结构
 
 ```
 typedef struct
@@ -106,7 +106,7 @@ typedef struct
 } ffmpeg_config_t;
 ```
 
-##### 接口说明
+## 接口说明
 API参考media_dec.h
 
 1. int ffmpeg_open(ffmpeg_handle *return_hanlde, ffmpeg_config_t *cfg, uint32_t user_data);  
@@ -252,7 +252,7 @@ API参考media_dec.h
 返回值：
     返回正在播放的句柄，如果没有在播放的就返回NULL
 ```
-##### 图像显示
+## 图像显示
 ffmpeg_config_t里的fmt表示UI上要显示的格式。
 如果视频编码是h264/h263格式， 内部解码出来是yuv格式。内部media_video_convert()会把解码出来的yuv转换为fmt对应的格式。
 如果视频编码是ezip， 内部解码出来仅仅是把ezip数据拿出来。UI上获得ezip数据直接显示。
@@ -264,5 +264,5 @@ IMG_DESC_FMT
 IMG_PIXEL_SIZE
 IMG_LV_FMT
 
-##### 调试
+## 调试
 目前解码只缓存了3帧图像，以音频播放为主，如果log里有drop字样，表示有丢帧了。
