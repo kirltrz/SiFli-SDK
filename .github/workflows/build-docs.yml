@@ -72,8 +72,8 @@ jobs:
       # Upload Chinese documents to COS
       - name: Upload zh_CN documentation for ${{ matrix.variant }} to COS
         uses: OpenSiFli/SiFliMirrorSync@v1
-        working-directory: ./docs/build/zh_CN/${{ matrix.variant }}/html
         with:
+          working_directory: ./docs/build/zh_CN/${{ matrix.variant }}/html
           secret_id: ${{ secrets.COS_DOCS_SECRET_ID }}
           secret_key: ${{ secrets.COS_DOCS_SECRET_KEY }}
           region: ${{ secrets.COS_DOCS_REGION }}
@@ -85,8 +85,8 @@ jobs:
       # Upload English documents to COS
       - name: Upload en documentation for ${{ matrix.variant }} to COS
         uses: OpenSiFli/SiFliMirrorSync@v1
-        working-directory: ./docs/build/en/${{ matrix.variant }}/html
         with:
+          working_directory: ./docs/build/en/${{ matrix.variant }}/html
           secret_id: ${{ secrets.COS_DOCS_SECRET_ID }}
           secret_key: ${{ secrets.COS_DOCS_SECRET_KEY }}
           region: ${{ secrets.COS_DOCS_REGION }}
