@@ -44,11 +44,21 @@
  *  to use other the default system malloc() and free() for heap management this is 
  *  the only file you'll need to change.
  **************************************************************************************/
-
+#include <rtthread.h>
 //#include "hlxclib/stdlib.h"		/* for malloc, free */ 
 #include <stdlib.h>
 #include <string.h>
 #include "coder.h"
+#include "audio_mem.h"
+#undef malloc
+#undef free
+#if 1
+#define malloc audio_mem_malloc
+#define free audio_mem_free
+#else
+#define malloc rt_malloc
+#define free rt_free
+#endif
 
 /**************************************************************************************
  * Function:    ClearBuffer

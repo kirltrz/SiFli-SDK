@@ -54,6 +54,11 @@ extensions:
       "filesystems/dhara/dhara"
     ignore_license: true
     ignore_copyright: true
+  - path:
+      "external/libhelix-mp3"
+    license:
+      - RCSL-1.2
+      - RPSL-1.0
 
 
     
