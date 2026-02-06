@@ -75,7 +75,7 @@ https://gitee.com/SiFli/sifli-sdk/tree/main/example/multimedia/lvgl/streaming_me
 
 ## 重要数据结构
 
-```
+```c
 typedef struct
 {
     ffmpeg_src_e    src;          //当前必须是e_src_localfile
@@ -110,7 +110,7 @@ typedef struct
 API参考media_dec.h
 
 1. int ffmpeg_open(ffmpeg_handle *return_hanlde, ffmpeg_config_t *cfg, uint32_t user_data);  
-```c
+```
 函数说明：
     打开一个文件或网络URL播放。
 参数：
@@ -122,28 +122,28 @@ API参考media_dec.h
 ```
 2. void ffmpeg_close(ffmpeg_handle hanlde);
 
-```c
+```
 函数说明：
     停止播放, 不能在notify()里调用。
 参数：
     hanlde: ffmpeg_open()时获得的句柄  
 ```
 3. void ffmpeg_pause(ffmpeg_handle hanlde);
-```c
+```
 函数说明：
     暂停播放, 不能在notify()里调用。
 参数：
     hanlde: ffmpeg_open()时获得的句柄  
 ```
 4. void ffmpeg_resume(ffmpeg_handle hanlde);
-```c
+```
 函数说明：
     恢复播放, 不能在notify()回调函数里调用。
 参数：
     hanlde: ffmpeg_open()时获得的句柄  
 ```
 5. void ffmpeg_seek(ffmpeg_handle hanlde, uint32_t second);
-```c
+```
 函数说明：
     定位到某个位置播放, 不能在notify()里调用。
 参数：
@@ -151,7 +151,7 @@ API参考media_dec.h
     second：从视频开始位置偏移多少秒
 ```
 6. void ffmpeg_audio_mute(ffmpeg_handle hanlde, bool is_mute);
-```c
+```
 函数说明：
     把音静音或不静音, 不能在notify()里调用。
 参数：
@@ -160,9 +160,10 @@ API参考media_dec.h
               0 -- 不静音
 ```
 7. uint8_t *ffmpeg_get_first_ezip(const char *filename, uint32_t *w, uint32_t *h, uint32_t *psize);
-```c
+```
 函数说明：
-    当视频是ezip编码，并且是本地文件时，获取视频里第一张图片，用完后需要用ffmpeg_eizp_release()释放内存。
+    当视频是ezip编码，并且是本地文件时，获取视频里第一张图片，用完后需要用
+    ffmpeg_eizp_release()释放内存。
 参数：
     filename: 文件路径
     w： 返回宽度
@@ -172,7 +173,7 @@ API参考media_dec.h
     图片对应的内存，用完后需要用ffmpeg_eizp_release()释放内存。
 ```
 8. uint8_t *ffmpeg_get_first_ezip_in_nand(const char *nand_address, uint32_t nand_size, uint32_t *w, uint32_t *h, uint32_t *psize);
-```c
+```
 函数说明：
     当视频是ezip编码，并且是本地nand里直接存放时，获取视频里第一张图片。
 参数：
@@ -185,14 +186,15 @@ API参考media_dec.h
     图片对应的内存，用完后需要用ffmpeg_eizp_release()释放内存。
 ```
 9. void ffmpeg_eizp_release(uint8_t *ezip);
+```
 函数说明：
     释放获取第一张图片时申请的内存。
 参数：
     ezip: ffmpeg_get_first_ezip()或ffmpeg_get_first_ezip_in_nand()的返回值
-
+```
 10. int ffmpeg_get_video_info(ffmpeg_handle hanlde, uint32_t *video_width, uint32_t *video_height, video_info_t *info);  
 
-```c
+```
 函数说明：
     获得视频信息。
 参数：
@@ -206,7 +208,7 @@ API参考media_dec.h
 ```
 
 11. bool ffmpeg_is_video_available(ffmpeg_handle hanlde);
-```c
+```
 函数说明：
     判断解码缓存里是不是有新的图片，获取图片前应该用这个查询下
 参数：
@@ -217,7 +219,7 @@ API参考media_dec.h
 ```
 
 12. int ffmpeg_next_video_frame(ffmpeg_handle hanlde, uint8_t *data);
-```c
+```
 函数说明：
     从解码缓存里取走一个新的图片
 参数：
@@ -244,7 +246,7 @@ API参考media_dec.h
 ```
 13. ffmpeg_handle ffmpeg_player_status_get(void);
 
-```c
+```
 函数说明：
     检查是不是有视频在播放，非线程安全的，可能返回后实际结果又变了
 参数：
