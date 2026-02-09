@@ -1,8 +1,7 @@
 # peripheral_with_ota example说明和SDK DFU接入
 
 ## 支持的平台
-52x，56x和58x的芯片\
-55x芯片已实现，流程略有不同
+全平台
 
 ## 概述
 <!-- 例程简介 -->

@@ -3,9 +3,9 @@ Source code path: example/rt_device/i2c/eeprom
 ## Supported Platforms
 The example can run on the following development boards:
 * sf32lb52-nano
-* sf32lb52-lcd
-* sf32lb56-lcd
-* sf32lb58-lcd
+* sf32lb52-lcd series
+* sf32lb56-lcd series
+* sf32lb58-lcd series
 ## Overview
 * Under RT-Thread operating system, demonstrate the usage of I2C through read and write operations on EEPROM chip AT24CO8SC module
 
