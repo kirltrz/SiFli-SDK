@@ -45,7 +45,8 @@ def analyze_file(config_file, scancode_file, scanned_files_dir):
     # containing the word 'license' in the source files, so ignore these for
     # now.
     # more_cat.append('Unstated License')
-    more_lic.append('unknown-license-reference')
+    if not report_unknown_license:
+        more_lic.append('unknown-license-reference')
 
     if check_copyright:
         print("Will check for missing copyrights...")
