@@ -343,14 +343,14 @@ int shutdown(int argc, char *argv[])
         HAL_PMU_DisableXTAL32();
 #endif /* SF32LB56X */
 
-#ifdef BSP_USING_BOARD_SF32LB52_CORE_N16R16
+#if defined(BSP_USING_BOARD_SF32LB52_CORE_N16R16) || defined(BSP_USING_BOARD_SF32LB52_CORE_N4)
         FLASH_HandleTypeDef *flash_handle;
         flash_handle = (FLASH_HandleTypeDef *)rt_flash_get_handle_by_addr(MPI2_MEM_BASE);
         HAL_FLASH_DEEP_PWRDOWN(flash_handle);
         HAL_Delay_us(3);
+        /*Keep the pins of the MPI in place to prevent flash abnormalities.*/
         hwp_pmuc->CR |= PMUC_CR_PIN_RET;
-#endif /* BSP_USING_BOARD_SF32LB52_CORE_N16R16 */
-
+#endif /* defined(BSP_USING_BOARD_SF32LB52_CORE_N16R16) || defined(BSP_USING_BOARD_SF32LB52_CORE_N4)*/
         HAL_PMU_EnterHibernate();
 
         /* while loop until system is down */
@@ -390,13 +390,14 @@ int shutdown(int argc, char *argv[])
 #else
 #endif
         rt_hw_interrupt_disable();
-#ifdef BSP_USING_BOARD_SF32LB52_CORE_N16R16
+#if defined(BSP_USING_BOARD_SF32LB52_CORE_N16R16) || defined(BSP_USING_BOARD_SF32LB52_CORE_N4)
         FLASH_HandleTypeDef *flash_handle;
         flash_handle = (FLASH_HandleTypeDef *)rt_flash_get_handle_by_addr(MPI2_MEM_BASE);
         HAL_FLASH_DEEP_PWRDOWN(flash_handle);
         HAL_Delay_us(3);
+        /*Keep the pins of the MPI in place to prevent flash abnormalities.*/
         hwp_pmuc->CR |= PMUC_CR_PIN_RET;
-#endif /* BSP_USING_BOARD_SF32LB52_CORE_N16R16 */
+#endif /* defined(BSP_USING_BOARD_SF32LB52_CORE_N16R16) || defined(BSP_USING_BOARD_SF32LB52_CORE_N4)*/
         /* Enter shutdown mode, system can be woken up by KEY1 */
         HAL_PMU_EnterShutdown();
         /* while loop until system is down */
