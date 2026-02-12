@@ -1420,6 +1420,25 @@ static int musbd_stage0_irq(PCD_HandleTypeDef *hpcd, uint8_t int_usb)
         r = 1;
     }
 
+    if (int_usb & USB_INTR_RESET)
+    {
+        r = 1;
+        switch (hpcd->phy_state)
+        {
+        case OTG_STATE_B_WAIT_ACON:
+        case OTG_STATE_B_PERIPHERALS:
+        case OTG_STATE_B_IDLE:
+            hpcd->phy_state = OTG_STATE_B_PERIPHERALS;
+            ep0_state_change(hpcd, HAL_PCD_EP0_IDLE);
+            HAL_PCD_ResetCallback(hpcd);
+            break;
+        default:
+            HAL_ASSERT(0);
+        }
+        if (int_usb & USB_INTR_SUSPEND)
+            int_usb &= ~USB_INTR_SUSPEND;
+    }
+
     if (int_usb & USB_INTR_SUSPEND)
     {
         r = 1;
@@ -1451,24 +1470,6 @@ static int musbd_stage0_irq(PCD_HandleTypeDef *hpcd, uint8_t int_usb)
         HAL_PCD_DisconnectCallback(hpcd);
         hpcd->Instance->devctl = USB_DEVCTL_SESSION;
         hpcd->phy_state = OTG_STATE_B_IDLE;
-    }
-    if (int_usb & USB_INTR_RESET)
-    {
-        r = 1;
-        switch (hpcd->phy_state)
-        {
-        case OTG_STATE_B_WAIT_ACON:
-        case OTG_STATE_B_PERIPHERALS:
-        case OTG_STATE_B_IDLE:
-            hpcd->phy_state = OTG_STATE_B_PERIPHERALS;
-            ep0_state_change(hpcd, HAL_PCD_EP0_IDLE);
-            HAL_PCD_ResetCallback(hpcd);
-            break;
-        default:
-            HAL_ASSERT(0);
-        }
-        if (int_usb & USB_INTR_SUSPEND)
-            int_usb &= ~USB_INTR_SUSPEND;
     }
 
     return r;
