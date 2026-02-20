@@ -1485,65 +1485,6 @@ menu "On-chip Peripheral RTOS Drivers"
         bool "Enable NN ACC"
         default n
 
-    menuconfig BSP_USING_HWMAILBOX
-        bool "Enable HwMailbox"
-        depends on SOC_SF32LB55X
-        default n
-        select RT_USING_HWMAILBOX
-        if BSP_USING_HWMAILBOX                    
-            config BSP_USING_MB_L2H_CH1
-                bool "Enable Mailbox L2H Channel1"
-                default n
-                help 
-                    Mailbox from LCPU to HCPU, channel 1
-            config BSP_USING_MB_L2H_CH2
-                bool "Enable Mailbox L2H Channel2"
-                default n
-                help 
-                    Mailbox from LCPU to HCPU, channel 2
-            config BSP_USING_MB_H2L_CH1
-                bool "Enable Mailbox H2L Channel1"
-                default n
-                help 
-                    Mailbox from HCPU to LCPU, channel 1
-            config BSP_USING_MB_H2L_CH2
-                bool "Enable Mailbox H2L Channel2"
-                default n
-                help 
-                    Mailbox from HCPU to LCPU, channel 2
-            if BF0_HCPU       
-                config BSP_USING_BIDIR_MB1
-                    bool "Enable Bidirectional Mailbox Channel1"
-                    default n
-                    select BSP_USING_MB_H2L_CH1
-                    select BSP_USING_MB_L2H_CH1
-                    help
-                        Mailbox between HCPU and LCPU, channel 1
-                config BSP_USING_BIDIR_MB3
-                    bool "Enable Bidirectional Mailbox Channel2"
-                    default n
-                    select BSP_USING_MB_H2L_CH2
-                    select BSP_USING_MB_L2H_CH2
-                    help
-                        Mailbox between HCPU and LCPU, channel 2
-            endif
-            if BF0_LCPU
-                config BSP_USING_BIDIR_MB1
-                    bool "Enable Bidirectional Mailbox Channel1"
-                    default n
-                    select BSP_USING_MB_L2H_CH1
-                    select BSP_USING_MB_H2L_CH1
-                    help 
-                        Mailbox between LCPU and HCPU, channel 1
-                config BSP_USING_BIDIR_MB3
-                    bool "Enable Bidirectional Mailbox Channel2"
-                    default n
-                    select BSP_USING_MB_L2H_CH2
-                    select BSP_USING_MB_H2L_CH2
-                    help 
-                        Mailbox between LCPU and HCPU, channel 2    
-            endif
-        endif
     menuconfig BSP_USING_I2S
         bool "Enable I2S audio driver"
         select RT_USING_AUDIO
