@@ -147,7 +147,7 @@ __HAL_ROM_USED void HAL_NVIC_SystemReset(void)
   * @retval status:  - 0  Function succeeded.
   *                  - 1  Function failed.
   */
-__HAL_ROM_USED uint32_t HAL_SYSTICK_Config(uint32_t TicksNumb)
+HAL_RAM_RET_CODE_SECT(HAL_SYSTICK_Config, __HAL_ROM_USED uint32_t HAL_SYSTICK_Config(uint32_t TicksNumb))
 {
     return SysTick_Config(TicksNumb);
 }
